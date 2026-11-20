@@ -117,13 +117,14 @@ use_mise_dirs_under_home() {
 
 resolve_install_dir() {
   local dir="$1"
+  # Til literal (vem entre aspas do usuário): expande para $HOME.
   case "$dir" in
-    "~") dir="$HOME" ;;
-    "~/"*) dir="$HOME/${dir#\~/}" ;;
+    \~) dir="$HOME" ;;
+    \~/*) dir="$HOME/${dir#\~/}" ;;
   esac
   case "$dir" in /*) ;; *) die "use um caminho absoluto em --install-dir: $1" ;; esac
   case "$dir" in *:*) die "o caminho não pode conter ':' (separador do PATH): $dir" ;; esac
-  case "$dir" in *'"'*|*'$'*|*'`'*|*'\'*) die "o caminho não pode conter aspas, \$, \` ou \\: $dir" ;; esac
+  case "$dir" in *\"*|*\$*|*\`*|*\\*) die "o caminho não pode conter aspas, \$, \` ou \\: $dir" ;; esac
   if [ "$CMD" = install ]; then
     mkdir -p "$dir" 2>/dev/null || die "não consegui criar $dir. Escolha uma pasta do seu usuário (ex.: ~/dev/tools)"
     [ -w "$dir" ] || die "sem permissão de escrita em $dir. Escolha uma pasta do seu usuário (ex.: ~/dev/tools)"
