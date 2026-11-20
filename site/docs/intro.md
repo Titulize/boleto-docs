@@ -23,6 +23,8 @@ A Fase 1 entrega a fundação (repositórios, ambiente de desenvolvimento, vers�
 
 ## Por onde começar
 
+- [Progresso](./progresso/index.md): situação de cada tarefa da Fase 1.
+- [Padrão do projeto](./guias/padrao-do-projeto.md): regras de trabalho, definição de pronto e atualização da documentação.
 - [Visão de contexto](./arquitetura/contexto.md): quem usa o sistema e com o que ele conversa.
 - [Containers](./arquitetura/containers.md): as peças que rodam e como se conectam.
 - [Versões centrais](./guias/versoes.md): como as versões são controladas.

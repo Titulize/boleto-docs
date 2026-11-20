@@ -11,6 +11,8 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
 | Docker Compose de desenvolvimento | `compose/` | Task 5 |
+| Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
+| Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
 
 ## Versões centrais
 
@@ -68,9 +70,13 @@ docker compose up docs   # http://localhost:3000/boleto-docs/
 
 ## Contribuindo
 
+Siga o [Padrão do projeto](site/docs/guias/padrao-do-projeto.md). Em resumo:
+
 - Commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/), por exemplo `feat(versions): atualiza Gradle para 9.9.2`. A CI valida as mensagens dos commits de cada PR.
-- Uma mudança em `versions.toml` altera a versão do repositório, então gera uma nova tag.
-- Alterações em `main` passam por PR.
+- Trabalho em branch e PR. O PR só é integrado com todos os workflows verdes.
+- Antes de enviar, rode localmente as verificações da tabela "Antes de enviar" do padrão, inclusive `npx commitlint --from origin/main --to HEAD`.
+- Uma mudança em `versions.toml` gera uma nova tag.
+- Toda tarefa que avança atualiza o [registro de progresso](site/docs/progresso/index.md), os guias afetados e os READMEs.
 
 ## Custos
 

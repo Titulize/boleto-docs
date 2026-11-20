@@ -1,0 +1,26 @@
+---
+sidebar_position: 0
+title: Progresso
+---
+
+# Progresso da Fase 1
+
+Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o que foi entregue, como foi verificado, falhas e pendências. Os registros seguem o [modelo](./modelo.md) e são atualizados a cada avanço, conforme o [padrão do projeto](../guias/padrao-do-projeto.md#atualização-da-documentação).
+
+| Task | Título | Situação | Última atualização |
+|---|---|---|---|
+| [01](./task-01-versions-toml.md) | Repositório `boleto-docs` e `versions.toml` central | Concluída | 2026-11-20 |
+| [02](./task-02-docusaurus.md) | Site de documentação viva (Docusaurus) | Concluída | 2026-11-20 |
+| [03](./task-03-sincronizacao.md) | Sincronização de versões | Concluída | 2026-11-20 |
+| [04](./task-04-bootstrap.md) | Scripts de bootstrap do ambiente do dev | Em andamento | 2026-11-20 |
+| 05 | Compose de desenvolvimento (infraestrutura) | Não iniciada | |
+| 06 | Repositório `boleto-migrations` (Flyway) | Não iniciada | |
+| 07 | Esqueleto do backend | Não iniciada | |
+| 08 | Base multi-tenant e auditoria | Não iniciada | |
+| 09 | Autenticação e autorização | Não iniciada | |
+| 10 | Convite de usuário e "esqueci minha senha" | Não iniciada | |
+| 11 | Observabilidade local | Não iniciada | |
+| 12 | Esqueleto do frontend | Não iniciada | |
+| 13 | Telas de Login | Não iniciada | |
+| 14 | CI/CD e cadeia de suprimentos | Não iniciada | |
+| 15 | Documentação final e validação do onboarding | Não iniciada | |
