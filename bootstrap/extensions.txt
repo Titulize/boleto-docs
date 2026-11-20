@@ -1,0 +1,29 @@
+# Extensões recomendadas para Kiro e VS Code (uma por linha, formato publisher.nome).
+# Todas existem no Open VSX (usado pelo Kiro) e no marketplace do VS Code.
+
+# Java e Spring
+redhat.java
+vscjava.vscode-java-debug
+vscjava.vscode-java-test
+vscjava.vscode-java-dependency
+vscjava.vscode-gradle
+vmware.vscode-spring-boot
+
+# Angular e web
+Angular.ng-template
+dbaeumer.vscode-eslint
+ms-playwright.playwright
+
+# Docker, banco e CI
+ms-azuretools.vscode-docker
+ckolkman.vscode-postgres
+github.vscode-github-actions
+
+# Arquivos e documentação
+EditorConfig.EditorConfig
+redhat.vscode-yaml
+tamasfe.even-better-toml
+bierner.markdown-mermaid
+
+# Git
+vivaxy.vscode-conventional-commits

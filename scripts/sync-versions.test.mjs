@@ -107,6 +107,10 @@ test('init do backend gera catálogo, wrapper, env e bloco do Dockerfile', async
   assert.ok(!df.includes('VELHO'));
   assert.match(df, /FROM \$\{AL2023_IMAGE\}\nRUN echo ola\n$/);
 
+  const mise = readFileSync(join(root, 'mise.toml'), 'utf8');
+  assert.match(mise, /\[tools\]\njava = "corretto-25\.0\.5\.1\.2"\n$/);
+  assert.ok(!mise.includes('node'), 'o backend não pede Node');
+
   const lock = JSON.parse(readFileSync(join(root, '.platform/lock.json'), 'utf8'));
   assert.equal(lock.source.sha256, sha256(realToml));
   assert.deepEqual(await check(root), []);
@@ -156,6 +160,7 @@ test('init do frontend aplica pins no package.json e cria .node-version', async 
   assert.equal(pkg.dependencies['lib-propria'], '3.0.0');
   assert.equal(pkg.devDependencies.typescript, '6.0.3');
   assert.equal(readFileSync(join(root, '.node-version'), 'utf8'), '26.13.1\n');
+  assert.match(readFileSync(join(root, 'mise.toml'), 'utf8'), /\[tools\]\nnode = "26\.13\.1"\n$/);
   assert.match(readFileSync(join(root, 'Dockerfile'), 'utf8'), /ARG NODE_SHA256_X64=[0-9a-f]{64}/);
   assert.deepEqual(await check(root), []);
 
@@ -174,6 +179,25 @@ test('init de migrations gera as variáveis do Flyway', async () => {
   assert.match(env, /^FLYWAY_URL=https:\/\/download\.red-gate\.com\//m);
   assert.match(env, /^POSTGRES_IMAGE=public\.ecr\.aws\/docker\/library\/postgres:18\.7@sha256:/m);
   assert.match(readFileSync(join(root, 'Dockerfile'), 'utf8'), /ARG FLYWAY_SHA256=[0-9a-f]{64}/);
+  assert.ok(!existsSync(join(root, 'mise.toml')), 'migrations não usa mise');
+});
+
+test('o env do boleto-docs traz tudo que o bootstrap precisa', () => {
+  const env = readFileSync(join(repoRoot, '.platform/versions.env'), 'utf8');
+  for (const key of [
+    'JAVA_MAJOR',
+    'JAVA_CORRETTO_BUILD',
+    'NODE_VERSION',
+    'GRADLE_VERSION',
+    'MISE_VERSION',
+    'MISE_URL_LINUX_X64',
+    'MISE_SHA256_LINUX_ARM64',
+    'MISE_SHA256_MACOS_X64',
+    'MISE_SHA256_MACOS_ARM64',
+    'MISE_SHA256_WINDOWS_X64',
+  ]) {
+    assert.match(env, new RegExp(`^${key}=\\S+$`, 'm'), `${key} ausente`);
+  }
 });
 
 test('update troca para uma tag nova', async () => {

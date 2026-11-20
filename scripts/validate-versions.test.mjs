@@ -56,6 +56,12 @@ test('falha quando falta seção obrigatória', () => {
   assert.ok(validate(data).some((e) => e.includes('[backend.libs]')));
 });
 
+test('falha quando o build do Corretto não pertence à versão do Java', () => {
+  const data = load();
+  data.runtime.java.corretto_build = '24.0.1.1.1';
+  assert.ok(validate(data).some((e) => e.includes('corretto_build')));
+});
+
 test('falha para schema_version diferente de 1', () => {
   const data = load();
   data.schema_version = 2;

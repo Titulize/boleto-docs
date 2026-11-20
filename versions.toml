@@ -15,8 +15,10 @@ schema_version = 1
 
 [runtime.java]
 # Amazon Corretto 25 (LTS, suporte até 2032-10). Imagens Docker em [images.corretto_*].
+# corretto_build é o identificador usado pelo mise (corretto-<build>).
 major = "25"
 version = "25.0.5"
+corretto_build = "25.0.5.1.2"
 
 [runtime.node]
 # Node 26 é LTS ativa desde 2026-10-28. Angular 22 aceita ^26.0.0.
@@ -30,6 +32,21 @@ sha256_linux_arm64 = "89e1853138db51e8b82d3e98ba9c0d3f2956a28e5e55ea1b7e12d25aae
 version = "9.9.2"
 distribution_url = "https://services.gradle.org/distributions/gradle-9.9.2-bin.zip"
 distribution_sha256 = "971fcd7150ca4ba04852c0b2ca0d2d0ab9468e14b03473eab19528809914c76b"
+
+[tools.mise]
+# Gerenciador de ferramentas do ambiente do dev (instala Java e Node nas versões exatas).
+# O bootstrap baixa estes binários e confere o sha256.
+version = "2026.11.11"
+url_linux_x64 = "https://github.com/jdx/mise/releases/download/v2026.11.11/mise-v2026.11.11-linux-x64.tar.gz"
+sha256_linux_x64 = "8366f07309794f93cfdd7343e3de3d5294c185165a0ec418426508cf0733e3d7"
+url_linux_arm64 = "https://github.com/jdx/mise/releases/download/v2026.11.11/mise-v2026.11.11-linux-arm64.tar.gz"
+sha256_linux_arm64 = "638faf3b6eb49228557876ebf3826b08011f8359599df377406b3d648a5a1d9b"
+url_macos_x64 = "https://github.com/jdx/mise/releases/download/v2026.11.11/mise-v2026.11.11-macos-x64.tar.gz"
+sha256_macos_x64 = "7784da9fd85c77a0f0df6e6e39a6908089afc2a3f2c7ade78d362147fc4ef222"
+url_macos_arm64 = "https://github.com/jdx/mise/releases/download/v2026.11.11/mise-v2026.11.11-macos-arm64.tar.gz"
+sha256_macos_arm64 = "3a0b7a727d86bd15a64c6df9ef6531111a4741b07e6f1e2bb6f6bb5b09e2663f"
+url_windows_x64 = "https://github.com/jdx/mise/releases/download/v2026.11.11/mise-v2026.11.11-windows-x64.zip"
+sha256_windows_x64 = "f4fcad8e9ca83ba81b709f2636a860f2b7d8c39af17115944493aab8c4ca6fab"
 
 [tools.flyway]
 # Só existe build linux-x64 (sem linux-arm64). Em Apple Silicon roda via emulação.

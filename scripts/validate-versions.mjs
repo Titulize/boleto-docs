@@ -19,6 +19,7 @@ const REQUIRED_SECTIONS = [
   'runtime.node',
   'tools.gradle',
   'tools.flyway',
+  'tools.mise',
   'images.amazonlinux',
   'images.corretto_jdk',
   'images.corretto_headless',
@@ -57,6 +58,14 @@ export function validate(data) {
   for (const section of REQUIRED_SECTIONS) {
     if (!isTable(get(data, section))) {
       errors.push(`seção obrigatória ausente: [${section}]`);
+    }
+  }
+
+  // O build do Corretto (usado pelo mise) precisa pertencer à versão do Java.
+  const java = get(data, 'runtime.java');
+  if (isTable(java)) {
+    if (typeof java.corretto_build !== 'string' || !java.corretto_build.startsWith(`${java.version}.`)) {
+      errors.push(`runtime.java: corretto_build deve começar com "${java.version}."`);
     }
   }
 

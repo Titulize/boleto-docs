@@ -9,7 +9,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Validação das versões | `scripts/validate-versions.mjs` | pronto |
 | Site de documentação (Docusaurus) | `site/` | pronto |
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
-| Scripts de bootstrap do ambiente do dev | `bootstrap/` | Task 4 |
+| Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
 | Docker Compose de desenvolvimento | `compose/` | Task 5 |
 
 ## Versões centrais
@@ -35,6 +35,22 @@ npm test             # testes dos scripts
 Os outros repositórios usam o mesmo script. Veja [Versões centrais](site/docs/guias/versoes.md).
 
 Requer Node 24.15 ou superior (o projeto usa o Node 26 LTS).
+
+## Ambiente do desenvolvedor
+
+Requisito mínimo: Docker com Compose e Git. O script instala Java 25, Node e as extensões do Kiro e do VS Code, nas versões do `versions.toml`.
+
+```powershell
+.\bootstrap\bootstrap.ps1          # Windows: instala
+.\bootstrap\bootstrap.ps1 doctor   # diagnostica, sem alterar nada
+```
+
+```bash
+bootstrap/bootstrap.sh             # Linux e macOS: instala
+bootstrap/bootstrap.sh doctor      # diagnostica, sem alterar nada
+```
+
+Veja [Ambiente do desenvolvedor](site/docs/guias/ambiente-do-dev.md) para as opções e os pontos de atenção.
 
 ## Documentação
 

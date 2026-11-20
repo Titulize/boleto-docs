@@ -45,7 +45,9 @@ const ALL_IMAGES = [
 export const TARGETS = {
   docs: {
     images: ALL_IMAGES,
-    vars: ['node'],
+    // O boleto-docs hospeda o bootstrap do ambiente do dev, que precisa de tudo.
+    vars: ['node', 'java', 'gradle', 'flyway', 'mise'],
+    miseTools: ['node'],
     packages: 'docs',
     dockerArgs: ['AL2023_IMAGE', 'NODE_VERSION', 'NODE_SHA256_X64', 'NODE_SHA256_ARM64'],
     files: [],
@@ -54,6 +56,7 @@ export const TARGETS = {
   backend: {
     images: ['amazonlinux', 'corretto_jdk', 'corretto_headless', 'postgres', 'valkey'],
     vars: ['java', 'gradle'],
+    miseTools: ['java'],
     packages: null,
     dockerArgs: ['CORRETTO_JDK_IMAGE', 'CORRETTO_HEADLESS_IMAGE'],
     files: ['catalog', 'wrapper'],
@@ -62,6 +65,7 @@ export const TARGETS = {
   frontend: {
     images: ['amazonlinux'],
     vars: ['node'],
+    miseTools: ['node'],
     packages: 'frontend',
     dockerArgs: ['AL2023_IMAGE', 'NODE_VERSION', 'NODE_SHA256_X64', 'NODE_SHA256_ARM64'],
     files: ['node-version'],
@@ -70,6 +74,7 @@ export const TARGETS = {
   migrations: {
     images: ['amazonlinux', 'postgres'],
     vars: ['flyway'],
+    miseTools: [],
     packages: null,
     dockerArgs: ['AL2023_IMAGE', 'FLYWAY_VERSION', 'FLYWAY_URL', 'FLYWAY_SHA256'],
     files: [],
@@ -116,8 +121,16 @@ export function envPairs(data, targetName) {
     } else if (v === 'java') {
       pairs.push(['JAVA_VERSION', data.runtime.java.version]);
       pairs.push(['JAVA_MAJOR', data.runtime.java.major]);
+      pairs.push(['JAVA_CORRETTO_BUILD', data.runtime.java.corretto_build]);
     } else if (v === 'gradle') {
       pairs.push(['GRADLE_VERSION', data.tools.gradle.version]);
+    } else if (v === 'mise') {
+      const m = data.tools.mise;
+      pairs.push(['MISE_VERSION', m.version]);
+      for (const p of ['linux_x64', 'linux_arm64', 'macos_x64', 'macos_arm64', 'windows_x64']) {
+        pairs.push([`MISE_URL_${p.toUpperCase()}`, m[`url_${p}`]]);
+        pairs.push([`MISE_SHA256_${p.toUpperCase()}`, m[`sha256_${p}`]]);
+      }
     } else if (v === 'flyway') {
       const f = data.tools.flyway;
       pairs.push(['FLYWAY_VERSION', f.version]);
@@ -187,6 +200,14 @@ export function renderFiles(data, targetName, origin) {
   }
   if (t.files.includes('node-version')) {
     files.push({ path: '.node-version', content: `${data.runtime.node.version}\n` });
+  }
+  if (t.miseTools.length > 0) {
+    const lines = t.miseTools.map((tool) =>
+      tool === 'java'
+        ? `java = "corretto-${data.runtime.java.corretto_build}"`
+        : `node = "${data.runtime.node.version}"`,
+    );
+    files.push({ path: 'mise.toml', content: `${header(origin)}\n[tools]\n${lines.join('\n')}\n` });
   }
   return files;
 }

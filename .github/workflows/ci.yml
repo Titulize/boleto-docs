@@ -29,6 +29,46 @@ jobs:
         run: npm run sync:check
       - run: npm test
 
+  bootstrap-linux:
+    name: Bootstrap (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: ShellCheck
+        run: shellcheck --shell=bash bootstrap/bootstrap.sh
+      - name: Sintaxe do script PowerShell
+        shell: pwsh
+        run: |
+          $errs = $null; $tokens = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile("$PWD/bootstrap/bootstrap.ps1", [ref]$tokens, [ref]$errs)
+          if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error $_.Message }; exit 1 }
+      - name: Instalar em pasta isolada
+        run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/bootstrap.sh install --editor none
+      - name: Doctor
+        run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/bootstrap.sh doctor --editor none
+
+  bootstrap-windows:
+    name: Bootstrap (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      BOLETO_IGNORE_DOCKER: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Instalar em pasta isolada
+        shell: powershell
+        run: |
+          $env:BOLETO_DEV_HOME = Join-Path $env:RUNNER_TEMP 'boleto-dev'
+          powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/bootstrap.ps1 install -Editor none
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Doctor
+        shell: powershell
+        run: |
+          $env:BOLETO_DEV_HOME = Join-Path $env:RUNNER_TEMP 'boleto-dev'
+          powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/bootstrap.ps1 doctor -Editor none
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   commits:
     name: Conventional Commits
     if: github.event_name == 'pull_request'

@@ -1,0 +1,5 @@
+# GERADO por sync-versions.mjs a partir de versions.toml (local). Não edite.
+# Para mudar uma versão, altere o versions.toml no boleto-docs e rode a sincronização.
+
+[tools]
+node = "26.13.1"
