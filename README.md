@@ -7,7 +7,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 |---|---|---|
 | Versões centrais pinadas | `versions.toml` | pronto |
 | Validação das versões | `scripts/validate-versions.mjs` | pronto |
-| Site de documentação (Docusaurus) | `docs/` | Task 2 |
+| Site de documentação (Docusaurus) | `site/` | pronto |
 | Sincronização de versões nos outros repositórios | `scripts/` | Task 3 |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | Task 4 |
 | Docker Compose de desenvolvimento | `compose/` | Task 5 |
@@ -31,6 +31,19 @@ npm test           # testes do validador
 ```
 
 Requer Node 24.15 ou superior (o projeto usa o Node 26 LTS).
+
+## Documentação
+
+O site (Docusaurus, com ADRs, diagramas C4 em Mermaid e guias) fica em `site/` e roda em um container Amazon Linux 2023.
+
+```bash
+docker compose up docs   # http://localhost:3000/boleto-docs/
+```
+
+- A primeira subida instala as dependências e leva alguns minutos.
+- Links quebrados falham o build (`npm run build` dentro de `site/`).
+- A publicação no GitHub Pages é feita pela pipeline a cada push na `main` que altera `site/`.
+- Para propor uma decisão de arquitetura, copie `site/docs/adr/0000-modelo.md`.
 
 ## Contribuindo
 

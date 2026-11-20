@@ -1,4 +1,6 @@
 node_modules/
+site/build/
+site/.docusaurus/
 .env
 *.log
 .DS_Store

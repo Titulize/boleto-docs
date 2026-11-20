@@ -1,0 +1,20 @@
+:root {
+  --ifm-color-primary: #1f5fbf;
+  --ifm-color-primary-dark: #1c55aa;
+  --ifm-color-primary-darker: #1a50a0;
+  --ifm-color-primary-darkest: #154181;
+  --ifm-color-primary-light: #2f6fcf;
+  --ifm-color-primary-lighter: #3a77d3;
+  --ifm-color-primary-lightest: #5c90dc;
+  --ifm-code-font-size: 95%;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #6aa2ee;
+  --ifm-color-primary-dark: #4d90ea;
+  --ifm-color-primary-darker: #3f87e8;
+  --ifm-color-primary-darkest: #1c6ddb;
+  --ifm-color-primary-light: #87b4f2;
+  --ifm-color-primary-lighter: #95bdf4;
+  --ifm-color-primary-lightest: #bcd5f8;
+}
