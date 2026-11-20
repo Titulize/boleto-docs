@@ -4,7 +4,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { parse } from 'smol-toml';
+import { createRequire } from 'node:module';
+
+// Parser TOML embarcado (scripts/vendor), para rodar sem node_modules.
+const { parse } = createRequire(import.meta.url)('./vendor/smol-toml.cjs');
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;

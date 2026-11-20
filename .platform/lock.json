@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "target": "docs",
+  "source": "local",
+  "dockerfiles": ["docker/docs.Dockerfile"],
+  "packageJson": ["site/package.json"]
+}

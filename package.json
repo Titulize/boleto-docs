@@ -9,12 +9,13 @@
   },
   "scripts": {
     "validate": "node scripts/validate-versions.mjs",
+    "sync": "node scripts/sync-versions.mjs sync",
+    "sync:check": "node scripts/sync-versions.mjs check",
     "test": "node --test \"scripts/**/*.test.mjs\"",
     "commitlint": "commitlint"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
-    "@commitlint/config-conventional": "21.2.4",
-    "smol-toml": "1.9.1"
+    "@commitlint/config-conventional": "21.2.4"
   }
 }

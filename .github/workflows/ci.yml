@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run validate
+      - name: Arquivos derivados em dia com o versions.toml
+        run: npm run sync:check
       - run: npm test
 
   commits:

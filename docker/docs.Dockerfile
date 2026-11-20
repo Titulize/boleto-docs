@@ -1,14 +1,20 @@
 # Ambiente do site de documentação (Docusaurus) sobre Amazon Linux 2023.
-# Os valores padrão abaixo espelham o versions.toml. A sincronização (Task 3)
-# passa a gerá-los e a CI falha se divergirem.
+# Os valores do bloco abaixo vêm do versions.toml (npm run sync). A CI falha se divergirem.
+
+# >>> platform-versions
+# Gerado por sync-versions.mjs a partir de versions.toml (local). Não edite este bloco.
 ARG AL2023_IMAGE=public.ecr.aws/amazonlinux/amazonlinux:2023.12.20261117.0@sha256:3f018977be7a3473a0a473ed105b244b8bdec8683ecb24962f675db23017137b
+ARG NODE_VERSION=26.13.1
+ARG NODE_SHA256_X64=5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864
+ARG NODE_SHA256_ARM64=89e1853138db51e8b82d3e98ba9c0d3f2956a28e5e55ea1b7e12d25aae92d5dd
+# <<< platform-versions
 
 FROM ${AL2023_IMAGE}
 
 ARG TARGETARCH
-ARG NODE_VERSION=26.13.1
-ARG NODE_SHA256_X64=5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864
-ARG NODE_SHA256_ARM64=89e1853138db51e8b82d3e98ba9c0d3f2956a28e5e55ea1b7e12d25aae92d5dd
+ARG NODE_VERSION
+ARG NODE_SHA256_X64
+ARG NODE_SHA256_ARM64
 
 RUN dnf install -y --setopt=install_weak_deps=False tar xz gzip shadow-utils libatomic \
     && dnf clean all \

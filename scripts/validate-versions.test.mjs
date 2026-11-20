@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { parse } from 'smol-toml';
+import { createRequire } from 'node:module';
 import { validate } from './validate-versions.mjs';
 
+const { parse } = createRequire(import.meta.url)('./vendor/smol-toml.cjs');
 const here = dirname(fileURLToPath(import.meta.url));
 const load = () => parse(readFileSync(resolve(here, '..', 'versions.toml'), 'utf8'));
 

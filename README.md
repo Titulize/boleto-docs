@@ -8,7 +8,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Versões centrais pinadas | `versions.toml` | pronto |
 | Validação das versões | `scripts/validate-versions.mjs` | pronto |
 | Site de documentação (Docusaurus) | `site/` | pronto |
-| Sincronização de versões nos outros repositórios | `scripts/` | Task 3 |
+| Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | Task 4 |
 | Docker Compose de desenvolvimento | `compose/` | Task 5 |
 
@@ -26,9 +26,13 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 
 ```bash
 npm ci
-npm run validate   # valida o versions.toml
-npm test           # testes do validador
+npm run validate     # valida o versions.toml
+npm run sync         # regenera arquivos derivados deste repositório
+npm run sync:check   # falha se houver divergência (usado na CI)
+npm test             # testes dos scripts
 ```
+
+Os outros repositórios usam o mesmo script. Veja [Versões centrais](site/docs/guias/versoes.md).
 
 Requer Node 24.15 ou superior (o projeto usa o Node 26 LTS).
 
