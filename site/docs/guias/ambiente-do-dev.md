@@ -17,7 +17,9 @@ O requisito mínimo na máquina é **Docker com Compose** e **Git**. Um script i
 | Gradle | pinada | o Gradle Wrapper de cada projeto |
 | Extensões do Kiro e do VS Code | lista em `bootstrap/extensions.txt` | o script |
 
-O mise instala as ferramentas em uma pasta do seu usuário, sem precisar de administrador, e não mexe no Java ou no Node que já existem na máquina.
+O mise instala as ferramentas em uma pasta do seu usuário e não mexe no Java ou no Node que já existem na máquina.
+
+**Nenhum passo exige administrador.** Tudo vai para pastas e variáveis do seu usuário (no Windows, as variáveis de usuário, não as da máquina). A única exceção é a `libatomic` no Linux, que o script só verifica.
 
 ## Instalando
 
@@ -52,9 +54,47 @@ Depois de instalar, **abra um novo terminal** e reinicie o Kiro ou o VS Code, pa
 
 | Opção (PowerShell / Bash) | Efeito |
 |---|---|
+| `-InstallDir <pasta>` / `--install-dir <pasta>` | Instala tudo nessa pasta e aponta o ambiente para ela (veja abaixo) |
 | `-NoPersist` / `--no-persist` | Não altera variáveis do usuário, arquivos do shell nem o padrão global do mise |
 | `-Clone` / `--clone` | Clona os repositórios que faltarem ao lado do `boleto-docs` (exige acesso ao GitHub) |
 | `-Editor kiro\|code\|none` / `--editor ...` | Escolhe o editor das extensões (padrão: os que forem encontrados) |
+
+## Escolhendo a pasta de instalação
+
+Por padrão as ferramentas ficam em `%LOCALAPPDATA%` (Windows) ou em `~/.boleto-dev` e `~/.local/share/mise` (Linux e macOS). Para concentrar tudo em uma pasta sua:
+
+```powershell
+.\bootstrap\bootstrap.ps1 install -InstallDir C:\dev\tools
+```
+
+```bash
+bootstrap/bootstrap.sh install --install-dir ~/dev/tools
+```
+
+O que fica na pasta:
+
+```text
+C:\dev\tools
+├── bin\           mise
+└── mise\
+    ├── data\      Java, Node e shims
+    ├── config\    versões padrão do usuário
+    ├── cache\
+    └── state\
+```
+
+O script aponta o ambiente para a pasta:
+
+- **Windows:** grava, nas variáveis do seu usuário, `BOLETO_INSTALL_DIR`, `MISE_DATA_DIR`, `MISE_CONFIG_DIR`, `MISE_CACHE_DIR` e `MISE_STATE_DIR`, além do `JAVA_HOME` e do `PATH`. O perfil do PowerShell chama o mise dessa pasta.
+- **Linux e macOS:** o bloco do `.bashrc`, `.profile`, `.bash_profile` e `.zshrc` exporta as mesmas variáveis.
+
+Regras:
+
+- A pasta precisa ser um caminho absoluto em que você tenha permissão de escrita. Pastas como `C:\Program Files` ou `/opt` são recusadas com uma mensagem, sem pedir elevação.
+- A escolha fica gravada. Nas próximas execuções, `install` e `doctor` sem a opção continuam usando a mesma pasta.
+- Para trocar, rode o `install` com outra pasta. O script instala tudo na nova e tira do `PATH` as entradas da anterior. Os arquivos da pasta antiga não são apagados. Remova a pasta quando quiser.
+- Apagar a pasta desfaz a instalação das ferramentas. As variáveis do usuário (ou o bloco do shell) continuam lá até você rodar o `install` de novo.
+- `BOLETO_DEV_HOME` (modo isolado de testes) não pode ser combinado com `-InstallDir`.
 
 ## Diagnóstico: `doctor`
 
@@ -74,7 +114,8 @@ O `doctor` não altera nada. Mostra `[ OK ]`, `[WARN]` ou `[FAIL]` para cada ite
 | libatomic (só Linux) | ausente | |
 | mise | ausente | versão diferente da pinada |
 | Java e Node pinados | não instalados | |
-| `java`, `JAVA_HOME` e `node` do terminal atual | | apontam para outra versão |
+| `java`, `JAVA_HOME` e `node` do terminal atual | | apontam para outra versão ou outra pasta de instalação |
+| Variáveis do usuário (com `-InstallDir`, Windows) | | não apontam para a pasta escolhida |
 | Extensões do editor | | ausentes |
 | Repositórios ao lado do `boleto-docs` | | ausentes |
 
@@ -89,4 +130,10 @@ O `doctor` não altera nada. Mostra `[ OK ]`, `[WARN]` ou `[FAIL]` para cada ite
 
 ## Como o script é testado
 
-A CI roda o `install` e o `doctor` em pasta isolada no Ubuntu (com ShellCheck) e no Windows PowerShell 5.1. Na criação, o fluxo Linux também foi testado em um Amazon Linux 2023 limpo.
+A CI roda, no Ubuntu (com ShellCheck) e no Windows PowerShell 5.1:
+
+- `install` e `doctor` em pasta isolada;
+- `install` com pasta escolhida, gravando no ambiente do usuário (o runner é descartável), e a conferência em um terminal novo;
+- no Windows, a troca de pasta, conferindo que o `PATH` não guarda entradas da anterior.
+
+Na criação, o fluxo Linux também foi testado em um Amazon Linux 2023 limpo, com usuário comum sem `sudo`.

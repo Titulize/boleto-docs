@@ -9,12 +9,17 @@
 #
 # Opções:
 #   --no-persist       não altera o shell nem a configuração global do mise
+#   --install-dir DIR  pasta onde ficam o mise, o Java e o Node (ex.: ~/dev/tools). O PATH,
+#                      o JAVA_HOME e o mise do shell passam a apontar para ela. A escolha fica
+#                      gravada (BOLETO_INSTALL_DIR no bloco do shell). Padrão: ~/.boleto-dev
 #   --clone            clona os repositórios que faltarem ao lado do boleto-docs
 #   --editor <nome>    kiro, code ou none (padrão: todos os que forem encontrados)
 #   -h, --help         mostra esta ajuda
 #
+# Nada aqui exige root, exceto instalar a libatomic no Linux (o script só avisa).
+#
 # Variável de ambiente BOLETO_DEV_HOME: instala tudo dentro desta pasta, isolado
-# (útil para testes). Implica --no-persist.
+# (útil para testes). Implica --no-persist e não combina com --install-dir.
 # Variável BOLETO_IGNORE_DOCKER=1: falhas do Docker viram aviso (só para CI).
 #
 # Requisito: Docker com Compose e Git já instalados. O resto este script instala.
@@ -30,6 +35,9 @@ REPOS="boleto-docs boleto-backend boleto-frontend boleto-migrations"
 
 CMD="install"
 NO_PERSIST=0
+INSTALL_DIR_OPT=""
+CUSTOM_DIR=0
+INSTALL_MODE="padrão (~/.boleto-dev)"
 DO_CLONE=0
 EDITOR_OPT=""
 FAILS=0
@@ -49,7 +57,8 @@ info() { printf '       %s\n' "$*"; }
 step() { printf '\n== %s\n' "$*"; }
 die()  { printf '%s[ERRO]%s %s\n' "$C_FAIL" "$C_OFF" "$*" >&2; exit 2; }
 
-usage() { sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+# Imprime o cabeçalho de comentários (da linha 2 até a primeira linha que não é comentário).
+usage() { awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "${BASH_SOURCE[0]}"; }
 
 # --- argumentos ------------------------------------------------------------
 
@@ -57,6 +66,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     install|doctor) CMD="$1" ;;
     --no-persist) NO_PERSIST=1 ;;
+    --install-dir) shift; INSTALL_DIR_OPT="${1:-}"; [ -n "$INSTALL_DIR_OPT" ] || die "--install-dir precisa de uma pasta" ;;
     --clone) DO_CLONE=1 ;;
     --editor) shift; EDITOR_OPT="${1:-}" ;;
     -h|--help) usage; exit 0 ;;
@@ -98,14 +108,48 @@ detect_platform() {
 
 # --- ambiente isolado ou padrão -------------------------------------------
 
+use_mise_dirs_under_home() {
+  export MISE_DATA_DIR="$BOLETO_HOME/mise/data"
+  export MISE_CONFIG_DIR="$BOLETO_HOME/mise/config"
+  export MISE_CACHE_DIR="$BOLETO_HOME/mise/cache"
+  export MISE_STATE_DIR="$BOLETO_HOME/mise/state"
+}
+
+resolve_install_dir() {
+  local dir="$1"
+  case "$dir" in
+    "~") dir="$HOME" ;;
+    "~/"*) dir="$HOME/${dir#\~/}" ;;
+  esac
+  case "$dir" in /*) ;; *) die "use um caminho absoluto em --install-dir: $1" ;; esac
+  case "$dir" in *:*) die "o caminho não pode conter ':' (separador do PATH): $dir" ;; esac
+  case "$dir" in *'"'*|*'$'*|*'`'*|*'\'*) die "o caminho não pode conter aspas, \$, \` ou \\: $dir" ;; esac
+  if [ "$CMD" = install ]; then
+    mkdir -p "$dir" 2>/dev/null || die "não consegui criar $dir. Escolha uma pasta do seu usuário (ex.: ~/dev/tools)"
+    [ -w "$dir" ] || die "sem permissão de escrita em $dir. Escolha uma pasta do seu usuário (ex.: ~/dev/tools)"
+  fi
+  dir="${dir%/}"
+  printf '%s' "${dir:-/}"
+}
+
 setup_dirs() {
   if [ -n "${BOLETO_DEV_HOME:-}" ]; then
+    [ -z "$INSTALL_DIR_OPT" ] || die "BOLETO_DEV_HOME e --install-dir não podem ser usados juntos"
     BOLETO_HOME="$BOLETO_DEV_HOME"
     NO_PERSIST=1
-    export MISE_DATA_DIR="$BOLETO_HOME/mise/data"
-    export MISE_CONFIG_DIR="$BOLETO_HOME/mise/config"
-    export MISE_CACHE_DIR="$BOLETO_HOME/mise/cache"
-    export MISE_STATE_DIR="$BOLETO_HOME/mise/state"
+    INSTALL_MODE="isolada (BOLETO_DEV_HOME)"
+    use_mise_dirs_under_home
+  elif [ -n "$INSTALL_DIR_OPT" ] || [ -n "${BOLETO_INSTALL_DIR:-}" ]; then
+    # A escolha gravada no shell (BOLETO_INSTALL_DIR) vale quando --install-dir não é passado.
+    if [ -n "$INSTALL_DIR_OPT" ]; then
+      BOLETO_HOME="$(resolve_install_dir "$INSTALL_DIR_OPT")"
+      INSTALL_MODE="escolhida (--install-dir)"
+    else
+      BOLETO_HOME="$(resolve_install_dir "$BOLETO_INSTALL_DIR")"
+      INSTALL_MODE="escolhida (BOLETO_INSTALL_DIR)"
+    fi
+    CUSTOM_DIR=1
+    use_mise_dirs_under_home
   else
     BOLETO_HOME="$HOME/.boleto-dev"
   fi
@@ -175,12 +219,14 @@ check_prereqs() {
 
 install_mise() {
   step "mise $V_MISE_VERSION"
-  find_mise
-  if [ -n "$MISE" ]; then
+  # Só a cópia dentro da pasta de instalação conta: é ela que o PATH do shell vai usar.
+  # Um mise de outra pasta (ou de uma instalação anterior) não é reaproveitado.
+  if [ -x "$BIN_DIR/mise" ]; then
+    MISE="$BIN_DIR/mise"
     local have; have="$(mise_version)"
     case "$have" in
       "$V_MISE_VERSION"*) ok "mise $have já instalado ($MISE)"; return ;;
-      *) warn "mise $have encontrado em $MISE (versão pinada: $V_MISE_VERSION). Mantendo a existente"; return ;;
+      *) info "mise $have em $MISE difere da versão pinada; atualizando" ;;
     esac
   fi
   local url_var="V_MISE_URL_$PLATFORM_UP" sha_var="V_MISE_SHA256_$PLATFORM_UP"
@@ -220,6 +266,8 @@ shell_integration() {
   step "Shell"
   if [ "$NO_PERSIST" -eq 1 ]; then info "--no-persist: arquivos do shell não alterados"; return; fi
   local rc files="$HOME/.bashrc $HOME/.profile"
+  # Se existir, o shell de login lê o .bash_profile e ignora o .profile.
+  [ -f "$HOME/.bash_profile" ] && files="$files $HOME/.bash_profile"
   [ -f "$HOME/.zshrc" ] && files="$files $HOME/.zshrc"
   case "${SHELL:-}" in */zsh) files="$files $HOME/.zshrc" ;; esac
   local done_list=""
@@ -232,6 +280,14 @@ shell_integration() {
     {
       cat "$tmp"
       printf '%s\n' '# >>> boleto-dev (gerenciado por bootstrap.sh, não edite)'
+      if [ "$CUSTOM_DIR" -eq 1 ]; then
+        # Os caminhos já foram validados (sem aspas, $, ` ou \), então podem ir entre aspas duplas.
+        printf 'export BOLETO_INSTALL_DIR="%s"\n' "$BOLETO_HOME"
+        printf 'export MISE_DATA_DIR="%s"\n' "$MISE_DATA_DIR"
+        printf 'export MISE_CONFIG_DIR="%s"\n' "$MISE_CONFIG_DIR"
+        printf 'export MISE_CACHE_DIR="%s"\n' "$MISE_CACHE_DIR"
+        printf 'export MISE_STATE_DIR="%s"\n' "$MISE_STATE_DIR"
+      fi
       printf '%s\n' "export PATH=\"$BIN_DIR:$MISE_SHIMS:\$PATH\""
       # Delimitador entre aspas: o texto vai literal para o arquivo e só expande quando o shell o carregar.
       cat <<'RC'
@@ -307,6 +363,7 @@ repos_step() {
 
 doctor_tools() {
   step "Ferramentas do desenvolvedor"
+  info "pasta de instalação: $BOLETO_HOME ($INSTALL_MODE)"
   find_mise
   if [ -z "$MISE" ]; then
     fail "mise não encontrado. Rode: bootstrap/bootstrap.sh install"
@@ -317,9 +374,10 @@ doctor_tools() {
     "$V_MISE_VERSION"*) ok "mise $have" ;;
     *) warn "mise $have (pinada: $V_MISE_VERSION)" ;;
   esac
-  local home
+  local home expected_java_home=""
   if home="$("$MISE" where "java@corretto-$V_JAVA_CORRETTO_BUILD" 2>/dev/null)" && [ -x "$home/bin/java" ]; then
     ok "Java Corretto $V_JAVA_CORRETTO_BUILD instalado ($home)"
+    expected_java_home="$home"
   else
     fail "Java Corretto $V_JAVA_CORRETTO_BUILD não instalado. Rode: bootstrap/bootstrap.sh install"
   fi
@@ -338,7 +396,13 @@ doctor_tools() {
   else
     warn "java fora do PATH deste terminal. Abra um novo terminal"
   fi
-  if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then ok "JAVA_HOME=$JAVA_HOME"; else warn "JAVA_HOME não definido neste terminal"; fi
+  if [ -z "${JAVA_HOME:-}" ] || [ ! -x "$JAVA_HOME/bin/java" ]; then
+    warn "JAVA_HOME não definido neste terminal"
+  elif [ -n "$expected_java_home" ] && [ "${JAVA_HOME%/}" != "${expected_java_home%/}" ]; then
+    warn "JAVA_HOME deste terminal ($JAVA_HOME) é de outra instalação. Abra um novo terminal"
+  else
+    ok "JAVA_HOME=$JAVA_HOME"
+  fi
   if command -v node >/dev/null 2>&1; then
     case "$(node --version)" in
       "v$V_NODE_VERSION") ok "node no PATH deste terminal: $(node --version)" ;;

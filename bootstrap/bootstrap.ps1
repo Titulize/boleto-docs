@@ -9,14 +9,21 @@
 
   Requisito: Docker Desktop (com Compose) e Git já instalados. O resto este script instala.
 
+  Nada aqui exige administrador: tudo vai para pastas e variáveis do seu usuário.
+
   A variável de ambiente BOLETO_DEV_HOME instala tudo dentro de uma pasta, isolado
-  (útil para testes). Implica -NoPersist.
+  (útil para testes). Implica -NoPersist e não pode ser combinada com -InstallDir.
 
 .PARAMETER Command
   install ou doctor.
 
 .PARAMETER NoPersist
   Não altera o PATH/JAVA_HOME do usuário nem a configuração global do mise.
+
+.PARAMETER InstallDir
+  Pasta onde ficam o mise, o Java e o Node (por exemplo C:\dev\tools). O JAVA_HOME, o PATH e o
+  mise do usuário passam a apontar para ela. A escolha fica gravada (variável BOLETO_INSTALL_DIR
+  do usuário) e vale nas próximas execuções. Sem esta opção, usa %LOCALAPPDATA%.
 
 .PARAMETER Clone
   Clona os repositórios que faltarem ao lado do boleto-docs.
@@ -26,6 +33,9 @@
 
 .EXAMPLE
   .\bootstrap\bootstrap.ps1 doctor
+
+.EXAMPLE
+  .\bootstrap\bootstrap.ps1 install -InstallDir C:\dev\tools
 #>
 [CmdletBinding()]
 param(
@@ -33,6 +43,7 @@ param(
   [ValidateSet('install', 'doctor')]
   [string]$Command = 'install',
   [switch]$NoPersist,
+  [string]$InstallDir = '',
   [switch]$Clone,
   [ValidateSet('', 'kiro', 'code', 'none')]
   [string]$Editor = ''
@@ -82,18 +93,61 @@ function Read-Versions {
 
 # --- ambiente isolado ou padrão -------------------------------------------
 
+$MiseDirVars = @('MISE_DATA_DIR', 'MISE_CONFIG_DIR', 'MISE_CACHE_DIR', 'MISE_STATE_DIR')
+
+# Pastas do mise dentro de uma pasta base, na ordem de $MiseDirVars.
+function Get-MiseDirs($base) {
+  @{
+    MISE_DATA_DIR   = Join-Path $base 'mise\data'
+    MISE_CONFIG_DIR = Join-Path $base 'mise\config'
+    MISE_CACHE_DIR  = Join-Path $base 'mise\cache'
+    MISE_STATE_DIR  = Join-Path $base 'mise\state'
+  }
+}
+
+function Resolve-InstallDir([string]$dir, [bool]$create) {
+  if ($dir.Contains(';')) { Stop-Bootstrap "o caminho não pode conter ';' (separador do PATH): $dir" }
+  if (-not [IO.Path]::IsPathRooted($dir)) { Stop-Bootstrap "use um caminho absoluto em -InstallDir: $dir" }
+  $full = [IO.Path]::GetFullPath($dir).TrimEnd('\')
+  if ($create) {
+    try { New-Item -ItemType Directory -Force -Path $full | Out-Null }
+    catch { Stop-Bootstrap "não consegui criar $full. Escolha uma pasta do seu usuário (ex.: C:\dev\tools)" }
+    $probe = Join-Path $full ('.boleto-write-test-' + [Guid]::NewGuid().ToString('N'))
+    try { [IO.File]::WriteAllText($probe, ''); Remove-Item $probe -Force }
+    catch { Stop-Bootstrap "sem permissão de escrita em $full. Escolha uma pasta do seu usuário (ex.: C:\dev\tools)" }
+  }
+  return $full
+}
+
 function Initialize-Dirs {
+  $script:CustomDir = $false
   if ($env:BOLETO_DEV_HOME) {
+    if ($InstallDir) { Stop-Bootstrap 'BOLETO_DEV_HOME e -InstallDir não podem ser usados juntos' }
     $script:BoletoHome = $env:BOLETO_DEV_HOME
     $script:SkipPersist = $true
-    $env:MISE_DATA_DIR = Join-Path $script:BoletoHome 'mise\data'
-    $env:MISE_CONFIG_DIR = Join-Path $script:BoletoHome 'mise\config'
-    $env:MISE_CACHE_DIR = Join-Path $script:BoletoHome 'mise\cache'
-    $env:MISE_STATE_DIR = Join-Path $script:BoletoHome 'mise\state'
-    $script:MiseData = $env:MISE_DATA_DIR
+    $script:InstallMode = 'isolada (BOLETO_DEV_HOME)'
   } else {
-    $script:BoletoHome = Join-Path $env:LOCALAPPDATA 'boleto-dev'
-    $script:MiseData = Join-Path $env:LOCALAPPDATA 'mise'
+    # A escolha gravada no usuário vale quando -InstallDir não é passado.
+    $chosen = $InstallDir
+    $origin = '-InstallDir'
+    if (-not $chosen) {
+      $chosen = [Environment]::GetEnvironmentVariable('BOLETO_INSTALL_DIR', 'User')
+      $origin = 'BOLETO_INSTALL_DIR do usuário'
+    }
+    if ($chosen) {
+      $script:BoletoHome = Resolve-InstallDir $chosen ($Command -eq 'install')
+      $script:CustomDir = $true
+      $script:InstallMode = "escolhida ($origin)"
+    } else {
+      $script:BoletoHome = Join-Path $env:LOCALAPPDATA 'boleto-dev'
+      $script:MiseData = Join-Path $env:LOCALAPPDATA 'mise'
+      $script:InstallMode = 'padrão (%LOCALAPPDATA%)'
+    }
+  }
+  if ($env:BOLETO_DEV_HOME -or $script:CustomDir) {
+    $dirs = Get-MiseDirs $script:BoletoHome
+    foreach ($k in $MiseDirVars) { Set-Item -Path "Env:$k" -Value $dirs[$k] }
+    $script:MiseData = $dirs.MISE_DATA_DIR
   }
   $script:BinDir = Join-Path $script:BoletoHome 'bin'
   $script:Shims = Join-Path $script:MiseData 'shims'
@@ -149,12 +203,14 @@ function Test-Prereqs {
 
 function Install-Mise($V) {
   Write-Step "mise $($V.MISE_VERSION)"
-  Find-Mise
-  if ($script:Mise) {
+  # Só a cópia dentro da pasta de instalação conta: é ela que o PATH do usuário e o perfil vão usar.
+  # Um mise de outra pasta (ou de uma instalação anterior) não é reaproveitado.
+  $own = Join-Path $script:BinDir 'mise.exe'
+  if (Test-Path $own) {
+    $script:Mise = $own
     $have = Get-MiseVersion
-    if ($have -eq $V.MISE_VERSION) { Write-Ok "mise $have já instalado ($($script:Mise))" }
-    else { Write-Warn "mise $have encontrado em $($script:Mise) (versão pinada: $($V.MISE_VERSION)). Mantendo a existente" }
-    return
+    if ($have -eq $V.MISE_VERSION) { Write-Ok "mise $have já instalado ($own)"; return }
+    Write-Info "mise $have em $own difere da versão pinada; atualizando"
   }
   $tmp = Join-Path ([IO.Path]::GetTempPath()) ('boleto-mise-' + [Guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Path $tmp | Out-Null
@@ -191,22 +247,50 @@ function Install-Tools($V) {
   Write-Info "Gradle $($V.GRADLE_VERSION) vem pelo Gradle Wrapper de cada projeto"
 }
 
-function Add-UserPath($dir) {
+$SameDir = { param($a, $b) $a.TrimEnd('\') -ieq $b.TrimEnd('\') }
+
+# Coloca as pastas no início do PATH do usuário e tira as que ficaram de uma instalação anterior.
+function Set-UserPath([string[]]$add, [string[]]$remove) {
   $current = [Environment]::GetEnvironmentVariable('Path', 'User')
   $parts = @()
-  if ($current) { $parts = $current -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $dir.TrimEnd('\')) } }
-  [Environment]::SetEnvironmentVariable('Path', ((@($dir) + $parts) -join ';'), 'User')
+  if ($current) { $parts = @($current -split ';' | Where-Object { $_ }) }
+  $isIn = { param($p, $list) [bool](@($list) | Where-Object { & $SameDir $p $_ }) }
+  $removed = @($parts | Where-Object { (& $isIn $_ $remove) -and -not (& $isIn $_ $add) }).Count
+  $kept = @($parts | Where-Object { -not (& $isIn $_ (@($add) + @($remove))) })
+  [Environment]::SetEnvironmentVariable('Path', ((@($add) + $kept) -join ';'), 'User')
+  return $removed
+}
+
+# Pastas bin e shims das instalações que não são a atual (padrão e escolha gravada anterior).
+function Get-StalePaths {
+  $bases = @(@{ Bin = (Join-Path $env:LOCALAPPDATA 'boleto-dev\bin'); Shims = (Join-Path $env:LOCALAPPDATA 'mise\shims') })
+  $prev = [Environment]::GetEnvironmentVariable('BOLETO_INSTALL_DIR', 'User')
+  if ($prev) { $bases += @{ Bin = (Join-Path $prev 'bin'); Shims = (Join-Path $prev 'mise\data\shims') } }
+  $stale = @()
+  foreach ($b in $bases) {
+    foreach ($d in $b.Bin, $b.Shims) {
+      if (-not ((& $SameDir $d $script:BinDir) -or (& $SameDir $d $script:Shims))) { $stale += $d }
+    }
+  }
+  return $stale
 }
 
 function Set-UserEnvironment($V) {
   Write-Step 'PATH e JAVA_HOME do usuário'
   if ($script:SkipPersist) { Write-Info '-NoPersist: variáveis do usuário não alteradas'; return }
-  Add-UserPath $script:Shims
-  Add-UserPath $script:BinDir
+  $removed = Set-UserPath @($script:BinDir, $script:Shims) (Get-StalePaths)
+  if ($script:CustomDir) {
+    $dirs = Get-MiseDirs $script:BoletoHome
+    foreach ($k in $MiseDirVars) { [Environment]::SetEnvironmentVariable($k, $dirs[$k], 'User') }
+    [Environment]::SetEnvironmentVariable('BOLETO_INSTALL_DIR', $script:BoletoHome, 'User')
+    Write-Ok "pasta de instalação gravada: BOLETO_INSTALL_DIR=$($script:BoletoHome)"
+    Write-Ok 'variáveis do mise (MISE_DATA_DIR, MISE_CONFIG_DIR, MISE_CACHE_DIR, MISE_STATE_DIR) apontam para ela'
+  }
   $javaHomePath = (& $script:Mise where "java@corretto-$($V.JAVA_CORRETTO_BUILD)").Trim()
   [Environment]::SetEnvironmentVariable('JAVA_HOME', $javaHomePath, 'User')
   Write-Ok "JAVA_HOME=$javaHomePath"
   Write-Ok 'PATH do usuário atualizado (mise e shims)'
+  if ($removed -gt 0) { Write-Info "$removed pasta(s) de uma instalação anterior removida(s) do PATH (os arquivos antigos não foram apagados)" }
   Set-ProfileBlock
   Write-Info 'abra um novo terminal (e reinicie o Kiro/VS Code) para valer'
 }
@@ -220,7 +304,7 @@ function Set-ProfileBlock([string]$DocsDir = [Environment]::GetFolderPath('MyDoc
   $end = '# <<< boleto-dev'
   $block = @(
     "$start (gerenciado por bootstrap.ps1, não edite)",
-    "if (Test-Path '$($script:Mise)') { (& '$($script:Mise)' activate pwsh) | Out-String | Invoke-Expression }",
+    "if (Test-Path '$($script:Mise -replace "'", "''")') { (& '$($script:Mise -replace "'", "''")' activate pwsh) | Out-String | Invoke-Expression }",
     $end
   ) -join "`r`n"
   foreach ($p in $profiles) {
@@ -301,14 +385,24 @@ function Test-Tools($V) {
   # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
   $ErrorActionPreference = 'Continue'
   Write-Step 'Ferramentas do desenvolvedor'
+  Write-Info "pasta de instalação: $($script:BoletoHome) ($($script:InstallMode))"
+  if ($script:CustomDir -and -not $script:SkipPersist) {
+    $dirs = Get-MiseDirs $script:BoletoHome
+    $wrong = @($MiseDirVars | Where-Object { -not ([Environment]::GetEnvironmentVariable($_, 'User') -ieq $dirs[$_]) })
+    if ($wrong.Count -gt 0) {
+      Write-Warn "variáveis do usuário não apontam para a pasta escolhida: $($wrong -join ', '). Rode o install de novo"
+    }
+  }
   Find-Mise
   if (-not $script:Mise) { Write-Fail 'mise não encontrado. Rode: bootstrap\bootstrap.ps1 install'; return }
   $have = Get-MiseVersion
   if ($have -eq $V.MISE_VERSION) { Write-Ok "mise $have" } else { Write-Warn "mise $have (pinada: $($V.MISE_VERSION))" }
 
+  $expectedJavaHome = $null
   $javaHome = (& $script:Mise where "java@corretto-$($V.JAVA_CORRETTO_BUILD)" 2>$null)
   if ($LASTEXITCODE -eq 0 -and $javaHome -and (Test-Path (Join-Path $javaHome.Trim() 'bin\java.exe'))) {
-    Write-Ok "Java Corretto $($V.JAVA_CORRETTO_BUILD) instalado ($($javaHome.Trim()))"
+    $expectedJavaHome = $javaHome.Trim()
+    Write-Ok "Java Corretto $($V.JAVA_CORRETTO_BUILD) instalado ($expectedJavaHome)"
   } else {
     Write-Fail "Java Corretto $($V.JAVA_CORRETTO_BUILD) não instalado. Rode: bootstrap\bootstrap.ps1 install"
   }
@@ -330,7 +424,13 @@ function Test-Tools($V) {
   } else {
     Write-Warn 'java fora do PATH deste terminal. Abra um novo terminal'
   }
-  if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME 'bin\java.exe'))) { Write-Ok "JAVA_HOME=$($env:JAVA_HOME)" } else { Write-Warn 'JAVA_HOME não definido neste terminal' }
+  if (-not ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME 'bin\java.exe')))) {
+    Write-Warn 'JAVA_HOME não definido neste terminal'
+  } elseif ($expectedJavaHome -and -not (& $SameDir $env:JAVA_HOME $expectedJavaHome)) {
+    Write-Warn "JAVA_HOME deste terminal ($($env:JAVA_HOME)) é de outra instalação. Abra um novo terminal"
+  } else {
+    Write-Ok "JAVA_HOME=$($env:JAVA_HOME)"
+  }
   if (Get-Command node -ErrorAction SilentlyContinue) {
     $nv = (& node --version).Trim()
     if ($nv -eq "v$($V.NODE_VERSION)") { Write-Ok "node no PATH deste terminal: $nv" } else { Write-Warn "node no PATH deste terminal é $nv, esperado v$($V.NODE_VERSION)" }

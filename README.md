@@ -41,8 +41,9 @@ Requer Node 24.15 ou superior (o projeto usa o Node 26 LTS).
 Requisito mínimo: Docker com Compose e Git. O script instala Java 25, Node e as extensões do Kiro e do VS Code, nas versões do `versions.toml`.
 
 ```powershell
-.\bootstrap\bootstrap.ps1          # Windows: instala
-.\bootstrap\bootstrap.ps1 doctor   # diagnostica, sem alterar nada
+.\bootstrap\bootstrap.ps1                              # Windows: instala (sem administrador)
+.\bootstrap\bootstrap.ps1 install -InstallDir C:\dev\tools   # instala tudo em uma pasta sua
+.\bootstrap\bootstrap.ps1 doctor                       # diagnostica, sem alterar nada
 ```
 
 ```bash
