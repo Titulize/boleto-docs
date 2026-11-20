@@ -233,12 +233,15 @@ shell_integration() {
       cat "$tmp"
       printf '%s\n' '# >>> boleto-dev (gerenciado por bootstrap.sh, não edite)'
       printf '%s\n' "export PATH=\"$BIN_DIR:$MISE_SHIMS:\$PATH\""
-      printf '%s\n' 'if command -v mise >/dev/null 2>&1; then'
-      printf '%s\n' '  _boleto_jh="$(mise where java 2>/dev/null || true)"'
-      printf '%s\n' '  [ -n "$_boleto_jh" ] && export JAVA_HOME="$_boleto_jh"'
-      printf '%s\n' '  unset _boleto_jh'
-      printf '%s\n' 'fi'
-      printf '%s\n' '# <<< boleto-dev'
+      # Delimitador entre aspas: o texto vai literal para o arquivo e só expande quando o shell o carregar.
+      cat <<'RC'
+if command -v mise >/dev/null 2>&1; then
+  _boleto_jh="$(mise where java 2>/dev/null || true)"
+  [ -n "$_boleto_jh" ] && export JAVA_HOME="$_boleto_jh"
+  unset _boleto_jh
+fi
+# <<< boleto-dev
+RC
     } > "$rc"
     rm -f "$tmp"
     ok "PATH e JAVA_HOME configurados em $rc"

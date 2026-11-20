@@ -102,13 +102,21 @@ function Initialize-Dirs {
 }
 
 function Find-Mise {
+  # Chamadas nativas aqui escrevem no stderr. No Windows PowerShell 5.1, stderr redirecionado
+  # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
+  $ErrorActionPreference = 'Continue'
   $own = Join-Path $script:BinDir 'mise.exe'
   if (Test-Path $own) { $script:Mise = $own; return }
   $cmd = Get-Command mise -ErrorAction SilentlyContinue
   if ($cmd) { $script:Mise = $cmd.Source } else { $script:Mise = $null }
 }
 
-function Get-MiseVersion { ((& $script:Mise --version 2>$null) -split '\s+')[0] }
+function Get-MiseVersion {
+  # Chamadas nativas aqui escrevem no stderr. No Windows PowerShell 5.1, stderr redirecionado
+  # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
+  $ErrorActionPreference = 'Continue'
+  ((& $script:Mise --version 2>$null) -split '\s+')[0]
+}
 
 function Invoke-Mise {
   # Chama o mise e falha se o código de saída não for zero.
@@ -119,6 +127,9 @@ function Invoke-Mise {
 # --- etapas ------------------------------------------------------------------
 
 function Test-Prereqs {
+  # Chamadas nativas aqui escrevem no stderr. No Windows PowerShell 5.1, stderr redirecionado
+  # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
+  $ErrorActionPreference = 'Continue'
   Write-Step 'Pré-requisitos'
   if (Get-Command git -ErrorAction SilentlyContinue) {
     Write-Ok ('Git ' + ((git --version) -replace 'git version ', ''))
@@ -243,6 +254,9 @@ function Get-ExtensionList {
 }
 
 function Sync-EditorExtensions($mode) {
+  # Chamadas nativas aqui escrevem no stderr. No Windows PowerShell 5.1, stderr redirecionado
+  # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
+  $ErrorActionPreference = 'Continue'
   Write-Step 'Extensões do editor'
   if ($Editor -eq 'none') { Write-Info '-Editor none: extensões ignoradas'; return }
   $editors = @(Get-Editors)
@@ -265,6 +279,9 @@ function Sync-EditorExtensions($mode) {
 }
 
 function Sync-Repos {
+  # Chamadas nativas aqui escrevem no stderr. No Windows PowerShell 5.1, stderr redirecionado
+  # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
+  $ErrorActionPreference = 'Continue'
   Write-Step 'Repositórios (ao lado do boleto-docs)'
   foreach ($r in $Repos) {
     $dir = Join-Path $WorkspaceDir $r
@@ -280,6 +297,9 @@ function Sync-Repos {
 }
 
 function Test-Tools($V) {
+  # Chamadas nativas aqui escrevem no stderr. No Windows PowerShell 5.1, stderr redirecionado
+  # com EAP=Stop vira erro fatal, então estas funções usam Continue e checam LASTEXITCODE.
+  $ErrorActionPreference = 'Continue'
   Write-Step 'Ferramentas do desenvolvedor'
   Find-Mise
   if (-not $script:Mise) { Write-Fail 'mise não encontrado. Rode: bootstrap\bootstrap.ps1 install'; return }
