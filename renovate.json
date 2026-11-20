@@ -1,0 +1,49 @@
+{
+  "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "timezone": "America/Sao_Paulo",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Imagens Docker com tag e digest em versions.toml",
+      "managerFilePatterns": ["/^versions\\.toml$/"],
+      "matchStrings": [
+        "ref = \"(?<depName>[^\"]+)\"\\s*\\ntag = \"(?<currentValue>[^\"]+)\"\\s*\\ndigest = \"(?<currentDigest>sha256:[0-9a-f]{64})\""
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Bibliotecas Maven do backend em versions.toml",
+      "managerFilePatterns": ["/^versions\\.toml$/"],
+      "matchStrings": ["module = \"(?<depName>[^\"]+)\", version = \"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "description": "Plugins Gradle em versions.toml (artefato marcador do Plugin Portal)",
+      "managerFilePatterns": ["/^versions\\.toml$/"],
+      "matchStrings": ["id = \"(?<depName>[^\"]+)\", version = \"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "maven",
+      "packageNameTemplate": "{{{depName}}}:{{{depName}}}.gradle.plugin",
+      "registryUrlTemplate": "https://plugins.gradle.org/m2/"
+    },
+    {
+      "customType": "regex",
+      "description": "Pacotes npm em versions.toml",
+      "managerFilePatterns": ["/^versions\\.toml$/"],
+      "matchStrings": ["package = \"(?<depName>[^\"]+)\", version = \"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "npm"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "PRs de versions.toml recebem a label versions; checksums e digests de downloads exigem revisão manual",
+      "matchFileNames": ["versions.toml"],
+      "addLabels": ["versions"]
+    }
+  ]
+}
