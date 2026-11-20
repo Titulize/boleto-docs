@@ -253,11 +253,12 @@ install_mise() {
 install_tools() {
   step "Java $V_JAVA_MAJOR (Corretto $V_JAVA_CORRETTO_BUILD) e Node $V_NODE_VERSION"
   local java="java@corretto-$V_JAVA_CORRETTO_BUILD" node="node@$V_NODE_VERSION"
-  "$MISE" install "$java" "$node"
+  # Roda a partir da pasta do usuário: dentro de um projeto, o mise.toml dele geraria avisos.
   if [ "$NO_PERSIST" -eq 0 ]; then
-    "$MISE" use -g "$java" "$node"
-    ok "versões definidas como padrão do usuário (mise use -g)"
+    (cd "$HOME" && "$MISE" use -g "$java" "$node")   # instala e define como padrão do usuário
+    ok "Java e Node instalados e definidos como padrão do usuário (mise use -g)"
   else
+    (cd "$HOME" && "$MISE" install "$java" "$node")
     info "--no-persist: padrão global do mise não alterado"
   fi
   info "Gradle $V_GRADLE_VERSION vem pelo Gradle Wrapper de cada projeto"

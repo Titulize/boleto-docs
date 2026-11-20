@@ -33,8 +33,10 @@ Configurar a máquina do desenvolvedor com um comando, exigindo só Docker, Comp
 | Amazon Linux 2023 limpo | `install` como root e como usuário comum sem `sudo`, shell novo, troca de pasta | passou |
 | CI, Ubuntu | ShellCheck, `install` e `doctor` isolados, `install --install-dir` persistente e shell de login novo | verde no commit `90405d3` |
 | CI, Windows PowerShell 5.1 | `install` e `doctor` isolados, `install -InstallDir` persistente, terminal novo, troca de pasta | verde no commit `90405d3` |
+| Testes de `PATH` | `bootstrap/tests/path.tests.ps1` no PowerShell 7 e no 5.1 | 13 testes, todos passaram (local) |
+| `install` real, máquina do Danilo, modo padrão | `.\bootstrap\bootstrap.ps1 install` | **falhou** (ver abaixo), corrigido, aguardando nova execução |
 
-Não verificado: macOS, e o `install` real (persistente) na máquina de um desenvolvedor.
+Não verificado: macOS, e o `install` real concluído na máquina de um desenvolvedor.
 
 ## Falhas e correções
 
@@ -44,6 +46,8 @@ Não verificado: macOS, e o `install` real (persistente) na máquina de um desen
 
 Para evitar a repetição, o [padrão do projeto](../guias/padrao-do-projeto.md) passou a exigir a verificação local e o trabalho em branch com PR.
 
+- **O `install` real falhou na máquina do Danilo** (modo padrão, sem `-InstallDir`), na etapa "PATH e JAVA_HOME do usuário", com `You cannot call a method on a null-valued expression`. No modo padrão não há instalação anterior para limpar. A função devolvia uma lista vazia, que o PowerShell entrega como `$null`, e `@($null)` virou uma lista com um item nulo. O erro aconteceu antes de qualquer gravação. O mise, o Java e o Node já estavam instalados, mas o `PATH`, o `JAVA_HOME` e o perfil não foram tocados. A CI não pegou porque só testava o modo persistente com `-InstallDir`, em que sempre há pastas antigas, e os testes locais usavam `-NoPersist`. Correção: o cálculo do novo `PATH` virou a função pura `Get-NewUserPath`, que aceita listas nulas, com 13 testes em `bootstrap/tests/path.tests.ps1`. A CI passou a rodar esses testes no PowerShell 7 e no 5.1, e a testar o modo padrão persistente no Windows e no Linux.
+- **Avisos do mise na instalação** ("installed but not activated" e "overrides the global config"). Eram inofensivos, mas confundiam. O script agora roda só `mise use -g` (que já instala), a partir da pasta do usuário.
 - **CI falhou no PR #1** (que criou o padrão e este registro). O commitlint recusou uma linha do corpo do commit com mais de 100 caracteres. O PR foi substituído por um novo com a mensagem corrigida, e o padrão passou a incluir o `commitlint` na verificação local.
 
 ## Decisões e desvios do plano
@@ -61,3 +65,4 @@ Para evitar a repetição, o [padrão do projeto](../guias/padrao-do-projeto.md)
 | 2026-11-20 | Scripts, CI no Ubuntu e no Windows PowerShell 5.1, tag `v0.3.0` |
 | 2026-11-20 | Opção `-InstallDir` / `--install-dir` |
 | 2026-11-20 | Registro criado junto com o padrão do projeto |
+| 2026-11-20 | Correção da falha do `install` real no modo padrão, testes de `PATH`, CI do modo padrão persistente |

@@ -47,7 +47,13 @@ jobs:
         run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/bootstrap.sh install --editor none
       - name: Doctor
         run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/bootstrap.sh doctor --editor none
-      # O runner é descartável: aqui o install grava de verdade nos arquivos do shell.
+      # O runner é descartável: daqui em diante o install grava de verdade nos arquivos do shell.
+      - name: Instalar no local padrão (persistente) e conferir em shell novo
+        run: |
+          bash bootstrap/bootstrap.sh install --editor none
+          bash -lc 'bash bootstrap/bootstrap.sh doctor --editor none | tee /tmp/doctor-padrao.txt'
+          grep -q "pasta de instalação: $HOME/.boleto-dev (padrão" /tmp/doctor-padrao.txt
+          grep -q "OK .*JAVA_HOME=$HOME/.local/share/mise/" /tmp/doctor-padrao.txt
       - name: Instalar em pasta escolhida (persistente) e conferir em shell novo
         run: |
           bash bootstrap/bootstrap.sh install --install-dir "$RUNNER_TEMP/tools" --editor none
@@ -76,16 +82,33 @@ jobs:
           $env:BOLETO_DEV_HOME = Join-Path $env:RUNNER_TEMP 'boleto-dev'
           powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/bootstrap.ps1 doctor -Editor none
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      # O runner é descartável: aqui o install grava de verdade no ambiente do usuário.
+      - name: Testes da lógica de PATH (PowerShell 7 e 5.1)
+        shell: powershell
+        run: |
+          pwsh -NoProfile -File bootstrap/tests/path.tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/tests/path.tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      # O runner é descartável: daqui em diante o install grava de verdade no ambiente do usuário.
+      - name: Instalar no local padrão (persistente)
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/bootstrap.ps1 install -Editor none
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Terminal novo usa o local padrão
+        shell: powershell
+        run: bootstrap/ci/check-user-env.ps1 -DefaultMode
       - name: Instalar em pasta escolhida (persistente)
         shell: powershell
         run: |
           $dir = Join-Path $env:RUNNER_TEMP 'tools um'
           powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/bootstrap.ps1 install -InstallDir $dir -Editor none
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Terminal novo usa a pasta escolhida
+      - name: Terminal novo usa a pasta escolhida e o PATH do padrão sumiu
         shell: powershell
-        run: bootstrap/ci/check-user-env.ps1 -ExpectedDir (Join-Path $env:RUNNER_TEMP 'tools um')
+        run: |
+          $stale = @((Join-Path $env:LOCALAPPDATA 'boleto-dev'), (Join-Path $env:LOCALAPPDATA 'mise\shims'))
+          bootstrap/ci/check-user-env.ps1 -ExpectedDir (Join-Path $env:RUNNER_TEMP 'tools um') -StaleDir $stale
       - name: Trocar de pasta limpa o PATH antigo
         shell: powershell
         run: |

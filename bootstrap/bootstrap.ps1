@@ -237,28 +237,41 @@ function Install-Tools($V) {
   Write-Step "Java $($V.JAVA_MAJOR) (Corretto $($V.JAVA_CORRETTO_BUILD)) e Node $($V.NODE_VERSION)"
   $java = "java@corretto-$($V.JAVA_CORRETTO_BUILD)"
   $node = "node@$($V.NODE_VERSION)"
-  Invoke-Mise install $java $node
-  if (-not $script:SkipPersist) {
-    Invoke-Mise use -g $java $node
-    Write-Ok 'versões definidas como padrão do usuário (mise use -g)'
-  } else {
-    Write-Info '-NoPersist: padrão global do mise não alterado'
+  # Roda a partir da pasta do usuário: dentro de um projeto, o mise.toml dele geraria avisos.
+  Push-Location $env:USERPROFILE
+  try {
+    if (-not $script:SkipPersist) {
+      Invoke-Mise use -g $java $node   # instala e define como padrão do usuário
+      Write-Ok 'Java e Node instalados e definidos como padrão do usuário (mise use -g)'
+    } else {
+      Invoke-Mise install $java $node
+      Write-Info '-NoPersist: padrão global do mise não alterado'
+    }
+  } finally {
+    Pop-Location
   }
   Write-Info "Gradle $($V.GRADLE_VERSION) vem pelo Gradle Wrapper de cada projeto"
 }
 
-$SameDir = { param($a, $b) $a.TrimEnd('\') -ieq $b.TrimEnd('\') }
+$SameDir = { param($a, $b) ($null -ne $a) -and ($null -ne $b) -and ($a.TrimEnd('\') -ieq $b.TrimEnd('\')) }
+
+# Calcula o novo PATH sem gravar nada: $add vai para o início, $remove sai.
+# Listas vazias ou nulas são aceitas (uma função que devolve @() entrega $null ao chamador).
+function Get-NewUserPath([string]$current, $add, $remove) {
+  $add = @(@($add) | Where-Object { $_ })
+  $remove = @(@($remove) | Where-Object { $_ })
+  $parts = @(@("$current" -split ';') | Where-Object { $_ })
+  $isIn = { param($p, $list) [bool](@($list | Where-Object { & $SameDir $p $_ })).Count }
+  $removed = @($parts | Where-Object { (& $isIn $_ $remove) -and -not (& $isIn $_ $add) }).Count
+  $kept = @($parts | Where-Object { -not (& $isIn $_ ($add + $remove)) })
+  return [pscustomobject]@{ Path = (($add + $kept) -join ';'); Removed = $removed }
+}
 
 # Coloca as pastas no início do PATH do usuário e tira as que ficaram de uma instalação anterior.
-function Set-UserPath([string[]]$add, [string[]]$remove) {
-  $current = [Environment]::GetEnvironmentVariable('Path', 'User')
-  $parts = @()
-  if ($current) { $parts = @($current -split ';' | Where-Object { $_ }) }
-  $isIn = { param($p, $list) [bool](@($list) | Where-Object { & $SameDir $p $_ }) }
-  $removed = @($parts | Where-Object { (& $isIn $_ $remove) -and -not (& $isIn $_ $add) }).Count
-  $kept = @($parts | Where-Object { -not (& $isIn $_ (@($add) + @($remove))) })
-  [Environment]::SetEnvironmentVariable('Path', ((@($add) + $kept) -join ';'), 'User')
-  return $removed
+function Set-UserPath($add, $remove) {
+  $r = Get-NewUserPath ([Environment]::GetEnvironmentVariable('Path', 'User')) $add $remove
+  [Environment]::SetEnvironmentVariable('Path', $r.Path, 'User')
+  return $r.Removed
 }
 
 # Pastas bin e shims das instalações que não são a atual (padrão e escolha gravada anterior).

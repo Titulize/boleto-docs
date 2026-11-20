@@ -133,7 +133,8 @@ O `doctor` não altera nada. Mostra `[ OK ]`, `[WARN]` ou `[FAIL]` para cada ite
 A CI roda, no Ubuntu (com ShellCheck) e no Windows PowerShell 5.1:
 
 - `install` e `doctor` em pasta isolada;
-- `install` com pasta escolhida, gravando no ambiente do usuário (o runner é descartável), e a conferência em um terminal novo;
-- no Windows, a troca de pasta, conferindo que o `PATH` não guarda entradas da anterior.
+- `install` no local padrão e com pasta escolhida, gravando no ambiente do usuário (o runner é descartável), e a conferência em um terminal novo;
+- no Windows, a troca de pasta, conferindo que o `PATH` não guarda entradas da anterior nem duplicadas;
+- no Windows, os testes da lógica de `PATH` (`bootstrap/tests/path.tests.ps1`) no PowerShell 7 e no 5.1.
 
 Na criação, o fluxo Linux também foi testado em um Amazon Linux 2023 limpo, com usuário comum sem `sudo`.
