@@ -22,8 +22,8 @@ test('falha quando imagem não tem digest', () => {
 
 test('falha quando imagem usa tag latest', () => {
   const data = load();
-  data.images.redis.tag = 'latest';
-  assert.ok(validate(data).some((e) => e.includes('images.redis')));
+  data.images.valkey.tag = 'latest';
+  assert.ok(validate(data).some((e) => e.includes('images.valkey')));
 });
 
 test('falha para versões com faixa', () => {

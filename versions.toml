@@ -63,11 +63,12 @@ ref = "public.ecr.aws/docker/library/postgres"
 tag = "18.7"
 digest = "sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a"
 
-[images.redis]
-# Atenção: ElastiCache na AWS pode não acompanhar o Redis 8. Revisar (Valkey) ao planejar a AWS.
-ref = "public.ecr.aws/docker/library/redis"
-tag = "8.10.3"
-digest = "sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53"
+[images.valkey]
+# Valkey substitui o Redis: é compatível com o protocolo e com o Lettuce, e o Amazon ElastiCache
+# oferece Valkey (9.1 disponível desde 2026-06), com preço menor que o Redis OSS.
+ref = "docker.io/valkey/valkey"
+tag = "9.1.4"
+digest = "sha256:3ab0eca823ebbf0fe352476ebac330ac9e5f14b592b9a954eab296d341e81b0e"
 
 [images.mailpit]
 ref = "docker.io/axllent/mailpit"

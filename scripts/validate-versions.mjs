@@ -20,7 +20,7 @@ const REQUIRED_SECTIONS = [
   'images.corretto_jdk',
   'images.corretto_headless',
   'images.postgres',
-  'images.redis',
+  'images.valkey',
   'images.mailpit',
   'backend.plugins',
   'backend.libs',
