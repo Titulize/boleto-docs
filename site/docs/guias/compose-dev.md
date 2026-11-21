@@ -85,7 +85,7 @@ docker compose -f compose/docker-compose.yml --env-file .platform/versions.env -
 ## Problemas conhecidos
 
 - **Porta ocupada** (por exemplo, um PostgreSQL instalado na máquina): o `up` mostra `porta ocupada no host` e o caminho do `.env`. Mude a porta lá.
-- **Limite de pulls do Docker Hub:** as imagens do Valkey e do Mailpit vêm do `docker.io`, que limita pulls anônimos. Se o pull falhar, espere e tente de novo, ou faça `docker login`.
+- **Limite de pulls dos registros:** as imagens do Valkey e do Mailpit vêm do `docker.io`, e a do PostgreSQL vem do `public.ecr.aws`. Os dois limitam pulls anônimos (o `public.ecr.aws` respondeu `Data limit exceeded` na CI). Se o pull falhar, espere e tente de novo, ou faça `docker login`. A CI usa um cache das imagens para evitar isso ([ADR 0021](../adr/0021-cache-imagens-ci.md)); na máquina do dev, o Docker já guarda as imagens baixadas.
 - **Volume do PostgreSQL 18:** o volume é montado em `/var/lib/postgresql`, não em `/var/lib/postgresql/data`. No PostgreSQL 18 os dados ficam em `/var/lib/postgresql/18/docker`.
 - **Windows PowerShell 5.1:** os scripts são UTF-8 com BOM e CRLF (o `.gitattributes` garante o CRLF). Se o editor salvar sem BOM, os acentos das mensagens saem trocados.
 

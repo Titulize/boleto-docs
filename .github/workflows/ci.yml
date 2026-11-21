@@ -139,16 +139,70 @@ jobs:
             $null = [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$f", [ref]$tokens, [ref]$errs)
             if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error "${f}: $($_.Message)" }; exit 1 }
           }
-      # As imagens do docker.io estão sujeitas ao limite de pulls anônimos (ADR 0006).
-      - name: Baixar as imagens (até 3 tentativas)
+      # O PostgreSQL (public.ecr.aws) falhou com "Data limit exceeded" no commit 6650ff5 e o Valkey
+      # e o Mailpit (docker.io) têm limite de pulls anônimos (ADR 0006). As imagens ficam em cache.
+      # A chave vem da lista de imagens do compose, com digest: trocar um digest no versions.toml
+      # muda a chave e o cache antigo deixa de valer.
+      - name: Lista de imagens do compose e chave do cache
+        id: imagens
         run: |
           cp compose/.env.example compose/.env
+          docker compose -f compose/docker-compose.yml --env-file .platform/versions.env \
+            --env-file compose/.env config --images | sort > "$RUNNER_TEMP/imagens.txt"
+          echo "Imagens do compose:"; cat "$RUNNER_TEMP/imagens.txt"
+          echo "chave=imagens-compose-v1-$RUNNER_OS-$RUNNER_ARCH-$(sha256sum "$RUNNER_TEMP/imagens.txt" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Restaurar o cache das imagens
+        id: cache-imagens
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/imagens-compose.tar
+          key: ${{ steps.imagens.outputs.chave }}
+      - name: Carregar as imagens do cache ou baixar (até 3 tentativas)
+        id: imagens-carregadas
+        env:
+          CACHE_HIT: ${{ steps.cache-imagens.outputs.cache-hit }}
+          CHAVE: ${{ steps.imagens.outputs.chave }}
+        run: |
+          tar_imagens="$RUNNER_TEMP/imagens-compose.tar"
+          faltando() {
+            # Depois do docker load a imagem pode não ter o nome repo:tag@digest, mas o ID dela é o digest.
+            while read -r img; do
+              docker image inspect "$img" > /dev/null 2>&1 \
+                || docker image inspect "sha256:${img##*@sha256:}" > /dev/null 2>&1 \
+                || { echo "faltando no cache: $img"; return 0; }
+            done < "$RUNNER_TEMP/imagens.txt"
+            return 1
+          }
+          if [ "$CACHE_HIT" = "true" ]; then
+            echo "CACHE HIT ($CHAVE): carregando as imagens do cache, sem pull"
+            docker load -i "$tar_imagens"
+            if ! faltando; then
+              echo "Imagens carregadas do cache. Nenhum pull foi feito."
+              echo "salvar=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::warning::O cache não tinha todas as imagens. Baixando."
+          else
+            echo "CACHE MISS ($CHAVE): baixando as imagens e salvando no cache"
+          fi
           for i in 1 2 3; do
-            docker compose -f compose/docker-compose.yml --env-file .platform/versions.env \
-              --env-file compose/.env pull && exit 0
-            echo "tentativa $i falhou"; sleep 20
+            if docker compose -f compose/docker-compose.yml --env-file .platform/versions.env \
+              --env-file compose/.env pull; then
+              # shellcheck disable=SC2046
+              docker save -o "$tar_imagens" $(cat "$RUNNER_TEMP/imagens.txt")
+              ls -lh "$tar_imagens"
+              echo "salvar=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "tentativa $i falhou"; sleep $((30 * i))
           done
           exit 1
+      - name: Salvar o cache das imagens
+        if: steps.imagens-carregadas.outputs.salvar == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/imagens-compose.tar
+          key: ${{ steps.imagens.outputs.chave }}
       - name: dev up (Bash)
         run: bash compose/dev.sh up
       - name: Verificação (Bash)
