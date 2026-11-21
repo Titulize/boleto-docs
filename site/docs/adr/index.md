@@ -30,5 +30,6 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0017](./0017-conventional-commits.md) | Conventional Commits e release-please | Aceito |
 | [0018](./0018-custo-minimo.md) | Custo mínimo e repositório de documentação público | Aceito |
 | [0019](./0019-docusaurus.md) | Documentação viva com Docusaurus | Aceito |
-| [0020](./0020-compose-dev.md) | Compose de desenvolvimento | Aceito |
+| [0020](./0020-compose-dev.md) | Compose de desenvolvimento | Substituído em parte pelo 0022 |
 | [0021](./0021-cache-imagens-ci.md) | Cache das imagens Docker na CI | Aceito |
+| [0022](./0022-compose-unico.md) | Compose único, só com comandos padrão | Aceito |

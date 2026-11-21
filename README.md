@@ -10,7 +10,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Site de documentação (Docusaurus) | `site/` | pronto |
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
-| Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit) | `compose/` | pronto |
+| Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit e o site no profile `docs`) | `docker-compose.yml` | pronto |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
 
@@ -57,32 +57,27 @@ Veja [Ambiente do desenvolvedor](site/docs/guias/ambiente-do-dev.md) para as op�
 
 ## Compose de desenvolvimento
 
-PostgreSQL, Valkey e Mailpit locais, nas versões do `versions.toml`, com portas só em `127.0.0.1`. Interface do Mailpit em http://localhost:8025.
-
-```powershell
-.\compose\dev.ps1 up            # Windows: sobe e espera todos ficarem saudáveis
-.\compose\dev.ps1 down          # para (os dados continuam)
-.\compose\dev.ps1 reset         # apaga os dados e sobe de novo (pede confirmação; -Yes dispensa)
-.\compose\tests\verify.ps1      # verifica saúde e conexões dos serviços em execução
-```
+PostgreSQL, Valkey e Mailpit locais, nas versões do `versions.toml`, com portas só em `127.0.0.1`. Interface do Mailpit em http://localhost:8025. Só comandos padrão do Docker Compose, na raiz do repositório, sem `-f` e sem scripts:
 
 ```bash
-compose/dev.sh up               # Linux e macOS
-compose/dev.sh down
-compose/dev.sh reset            # --yes dispensa a confirmação
-compose/tests/verify.sh
+docker compose up -d --wait   # sobe a infraestrutura e espera ficar saudável
+docker compose ps
+docker compose logs -f valkey
+docker compose down           # para, mantém os dados
+docker compose down -v        # reset: apaga os dados
 ```
 
-Testes sem Docker: `pwsh -NoProfile -File compose/tests/dev.tests.ps1` (também no `powershell` 5.1) e `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
+Credenciais e portas têm valor padrão no `docker-compose.yml`. O `.env` é opcional (modelo em `.env.example`). As imagens ficam no bloco gerado do próprio arquivo, escrito por `npm run sync`. Testes sem Docker: `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
 
 ## Documentação
 
 O site (Docusaurus, com ADRs, diagramas C4 em Mermaid e guias) fica em `site/` e roda em um container Amazon Linux 2023.
 
 ```bash
-docker compose up docs   # http://localhost:3000/boleto-docs/
+docker compose up -d --wait docs   # http://localhost:3000/boleto-docs/ (profile docs)
 ```
 
+- Para parar o site, use `docker compose --profile docs down`.
 - A primeira subida instala as dependências e leva alguns minutos.
 - Links quebrados falham o build (`npm run build` dentro de `site/`).
 - A publicação no GitHub Pages é feita pela pipeline a cada push na `main` que altera `site/`.

@@ -29,9 +29,9 @@ O formato do `versions.toml` é próprio porque o Gradle rejeita chaves desconhe
 | `boleto-backend` (`backend`) | `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties` (com checksum), `mise.toml` (Java), `.platform/versions.env`, bloco de `ARG` no `Dockerfile` |
 | `boleto-frontend` (`frontend`) | `.node-version`, `mise.toml` (Node), versões dos pacotes no `package.json`, `.platform/versions.env`, bloco de `ARG` no `Dockerfile` |
 | `boleto-migrations` (`migrations`) | `.platform/versions.env`, bloco de `ARG` (Flyway) no `Dockerfile` |
-| `boleto-docs` (`docs`) | `.platform/versions.env` (usado pelo [bootstrap](./ambiente-do-dev.md) e pelo [Compose de desenvolvimento](./compose-dev.md)), `mise.toml` (Node), bloco de `ARG` em `docker/docs.Dockerfile`, versões em `site/package.json` |
+| `boleto-docs` (`docs`) | `.platform/versions.env` (usado pelo [bootstrap](./ambiente-do-dev.md)), `mise.toml` (Node), bloco de `ARG` em `docker/docs.Dockerfile`, bloco de imagens (`x-images`) no `docker-compose.yml` do [Compose de desenvolvimento](./compose-dev.md), versões em `site/package.json` |
 
-Nos Dockerfiles, o bloco entre `# >>> platform-versions` e `# <<< platform-versions` é gerado. Não edite à mão.
+Nos Dockerfiles e no `docker-compose.yml`, o bloco entre `# >>> platform-versions` e `# <<< platform-versions` é gerado. Não edite à mão. O `npm run sync:check` falha se algum bloco divergir do `versions.toml`. Os arquivos que recebem blocos ficam listados no `.platform/lock.json` (`dockerfiles` e `composeFiles`).
 
 ### Arquivos da pasta `.platform/` (nos repositórios de aplicação)
 
