@@ -77,7 +77,7 @@ O lint (Squawk) bloqueia `DROP COLUMN`, renomeação e `NOT NULL` sem padrão. U
 
 ### Migração de dados em tabela de tenant
 
-A dona das tabelas (`boleto_owner`) também passa pelo RLS forçado. Um `UPDATE` ou `INSERT ... SELECT` numa tabela de tenant, feito sem `app.tenant_id` definido, afeta 0 linhas e termina sem erro. Defina o tenant antes (`select set_config('app.tenant_id', '<uuid>', false)`) e confira o número de linhas afetadas. Detalhes no [ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md).
+A dona das tabelas (`boleto_owner`) também passa pelo RLS forçado. Um `UPDATE` ou `INSERT ... SELECT` numa tabela de tenant, feito sem `app.tenant_id` definido, afeta 0 linhas e termina sem erro. Para cada tenant, dentro da transação, defina o tenant com `SET LOCAL app.tenant_id = '<uuid>'` (ou `select set_config('app.tenant_id', '<uuid>', true)`), rode a alteração e confira o número de linhas afetadas. O padrão completo (`SET ROLE boleto_owner`, `SET LOCAL`, conferência e `RESET ROLE`) está no README do `boleto-migrations`. Detalhes no [ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md).
 
 ## Testes
 
@@ -90,12 +90,12 @@ docker compose -p boleto-migrations-test -f compose.test.yml down -v
 bash tests/negativos.sh                                                              # contrato da imagem
 ```
 
-O teste de isolamento roda como `boleto_app` contra um PostgreSQL 18 real e prova, entre outros pontos, que com o tenant A ativo a role da aplicação não lê nem grava dados do tenant B, mesmo sem filtro na consulta. Os casos negativos provam que a imagem sai com código diferente de zero quando uma migração foi alterada, tem SQL inválido ou o banco está inacessível.
+O teste de isolamento roda como `boleto_app` contra um PostgreSQL 18 real e prova, entre outros pontos, que com o tenant A ativo a role da aplicação não lê nem grava dados do tenant B, mesmo sem filtro na consulta. Os casos negativos provam que a imagem sai com código diferente de zero e a mensagem esperada quando uma migração foi alterada, tem SQL inválido, a senha está errada, o banco está inacessível ou há migração pendente no `validate`. O caso de lint exige as regras `ban-drop-column`, `renaming-column` e `adding-not-nullable-field` do Squawk.
 
 ## Produção
 
 A migração é o primeiro passo do deploy ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)). A mesma imagem roda uma vez na VPC (ECS Fargate ou Lambda), com a conexão por variáveis de ambiente, e o deploy do backend e depois o do frontend só acontecem se ela sair com 0. O encadeamento no pipeline e a publicação da imagem são do Task 14. Requisitos já definidos:
 
-- `FLYWAY_URL` com `sslmode=verify-full`, porque a senha da `boleto_app` trafega em `ALTER ROLE ... PASSWORD`.
+- `FLYWAY_URL` com `sslmode=verify-full` (por exemplo `jdbc:postgresql://host:5432/db?sslmode=verify-full`), porque a senha da `boleto_app` trafega em `ALTER ROLE ... PASSWORD`.
 - `FLYWAY_PLACEHOLDERS_APP_PASSWORD` e, se necessário, `FLYWAY_PLACEHOLDERS_TITULIZE_CNPJ` vindos do cofre de segredos. O CNPJ do seed é valor de teste.
 - Um usuário de migração com permissão para criar roles e schema, diferente da `boleto_app`.
