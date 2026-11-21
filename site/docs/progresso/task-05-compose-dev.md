@@ -5,7 +5,7 @@ title: 'Task 05: Compose de desenvolvimento'
 
 # Task 05: Compose de desenvolvimento (infraestrutura)
 
-- **Situação:** Em andamento
+- **Situação:** Concluída
 - **Início:** 2026-11-20
 - **Última atualização:** 2026-11-20
 - **Repositórios:** `boleto-docs`
@@ -44,9 +44,13 @@ Local: Windows, Docker 29.8.0, Compose 5.5.1, PowerShell 7.7.0, Windows PowerShe
 | `path.tests.ps1` (regressão do bootstrap) | PowerShell 7 e 5.1 | todos passaram |
 | `npm test`, `npm run validate`, `npm run sync:check` | | 27 testes passaram, 0 e 0 |
 | Workflows da CI | actionlint 1.7.12 local | sem erros |
-| CI no GitHub | | ainda não rodou (o PR não foi aberto) |
+| CI no GitHub | PR #4, commit `d1047e5` | os 7 jobs de `CI` e o `Build do site` passaram (ver abaixo) |
 
-Não verificado: macOS e Bash em Linux local (cobertos pela CI no Ubuntu, quando rodar). No runner Windows não há containers Linux, então o Windows PowerShell 5.1 com Docker real foi verificado só nesta máquina.
+Não verificado: macOS e Bash em Linux local (o Bash rodou na CI no Ubuntu). No runner Windows não há containers Linux, então o Windows PowerShell 5.1 com Docker real foi verificado só nesta máquina.
+
+### CI do PR #4 (commit `d1047e5`)
+
+Todos passaram na primeira execução: CI / Validar versions.toml e testes, CI / Bootstrap (Linux), CI / Bootstrap (Windows PowerShell 5.1), CI / Compose de desenvolvimento (Linux), CI / Compose (Windows PowerShell 5.1), CI / Conventional Commits e Documentação / Build do site. O job Publicar no GitHub Pages é pulado em PR e roda na `main` após a integração.
 
 ## Falhas e correções
 
@@ -63,11 +67,12 @@ Não verificado: macOS e Bash em Linux local (cobertos pela CI no Ubuntu, quando
 
 ## Pendências
 
-- Abrir o PR, acompanhar todos os workflows (`CI` com os jobs novos e `Documentação`) e integrar com tudo verde.
+- Nenhuma do Task 5. A publicação no GitHub Pages é conferida na `main` após a integração.
 - Schema e roles do banco: Task 6.
 
 ## Histórico
 
 | Data | Atualização |
 |---|---|
-| 2026-11-20 | Compose, atalhos, verificação, testes, CI e documentação. Demo local passou. Aguardando a CI do PR |
+| 2026-11-20 | Compose, atalhos, verificação, testes, CI e documentação. Demo local passou |
+| 2026-11-20 | PR #4 com todos os jobs verdes. Task concluída e integrada por squash |
