@@ -32,16 +32,17 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0019](./0019-docusaurus.md) | Documentação viva com Docusaurus | Aceito |
 | [0020](./0020-compose-dev.md) | Compose de desenvolvimento | Substituído em parte pelo 0022 |
 | [0021](./0021-cache-imagens-ci.md) | Cache das imagens Docker na CI | Aceito |
-| [0022](./0022-compose-unico.md) | Compose único, só com comandos padrão | Aceito |
+| [0022](./0022-compose-unico.md) | Compose único, só com comandos padrão | Substituído em parte pelo 0035 |
 | [0023](./0023-primeira-main-boleto-migrations.md) | Primeira `main` do `boleto-migrations` por exceção | Aceito |
 | [0024](./0024-flyway-jar-corretto.md) | Flyway pelo JAR sobre Amazon Corretto headless | Aceito |
 | [0025](./0025-modelo-de-dados-v1.md) | Modelo de dados da V1 | Aceito |
 | [0026](./0026-roles-e-rls.md) | Roles do banco e RLS forçado | Aceito |
-| [0027](./0027-migracao-primeiro-passo.md) | A migração é o primeiro passo do deploy | Aceito |
+| [0027](./0027-migracao-primeiro-passo.md) | A migração é o primeiro passo do deploy | Substituído em parte pelo 0035 |
 | [0028](./0028-lint-sql-e-testes.md) | Lint de SQL com Squawk e testes em PostgreSQL real | Aceito |
 | [0029](./0029-permissao-por-tela.md) | Permissão por tela | Aceito |
 | [0030](./0030-manutencao-de-dados-e-origem-do-tenant.md) | Manutenção de dados pela dona das tabelas e origem do tenant | Aceito |
 | [0031](./0031-primeira-main-boleto-backend.md) | Primeira `main` do `boleto-backend` por exceção | Aceito |
 | [0032](./0032-esqueleto-do-backend.md) | Esqueleto do backend | Aceito |
 | [0033](./0033-wrapper-qualidade-e-ci-do-backend.md) | Wrapper, qualidade e CI do backend | Aceito |
-| [0034](./0034-servico-backend-no-compose.md) | Serviço `backend` no Compose | Aceito |
+| [0034](./0034-servico-backend-no-compose.md) | Serviço `backend` no Compose | Substituído em parte pelo 0035 |
+| [0035](./0035-compose-sobe-a-aplicacao-inteira.md) | O Compose sobe a aplicação inteira no `up` padrão | Aceito |

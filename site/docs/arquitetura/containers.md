@@ -42,7 +42,7 @@ flowchart LR
 
 ## Ordem de execução
 
-A migração é o primeiro passo do deploy ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)): a imagem do `boleto-migrations` roda uma vez, valida os checksums, aplica as migrações pendentes e sai com código diferente de zero em qualquer erro. Só se ela terminar com 0, o backend é publicado, e só depois dele o frontend. Na AWS (fora desta fase), a migração roda na VPC, por exemplo como tarefa do ECS Fargate, com a conexão em variáveis de ambiente. Em desenvolvimento, o serviço `flyway` do Compose (profile `migrations`) faz o mesmo papel como comando à parte: `docker compose run --build --rm flyway` ([Compose de desenvolvimento](../guias/compose-dev.md) e [Migrações do banco](../guias/migracoes.md)). O serviço `backend` do Compose (profile `backend`) encadeia a mesma ordem: espera o PostgreSQL saudável e o `flyway` concluído com sucesso antes de subir ([ADR 0034](../adr/0034-servico-backend-no-compose.md)). A publicação da imagem num registro, multi-arquitetura (x64 e Graviton), e o encadeamento no pipeline ficam para o Task 14.
+A migração é o primeiro passo do deploy ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)): a imagem do `boleto-migrations` roda uma vez, valida os checksums, aplica as migrações pendentes e sai com código diferente de zero em qualquer erro. Só se ela terminar com 0, o backend é publicado, e só depois dele o frontend. Na AWS (fora desta fase), a migração roda na VPC, por exemplo como tarefa do ECS Fargate, com a conexão em variáveis de ambiente. Em desenvolvimento, o serviço `flyway` do Compose faz o mesmo papel: roda no `docker compose up -d` padrão e, para só a migração, `docker compose run --build --rm flyway` ([Compose de desenvolvimento](../guias/compose-dev.md) e [Migrações do banco](../guias/migracoes.md)). O serviço `backend` do Compose (também sem profile) encadeia a mesma ordem: espera o PostgreSQL saudável e o `flyway` concluído com sucesso antes de subir ([ADR 0034](../adr/0034-servico-backend-no-compose.md) e [ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)). A publicação da imagem num registro, multi-arquitetura (x64 e Graviton), e o encadeamento no pipeline ficam para o Task 14.
 
 ## Papéis de banco de dados
 
@@ -52,5 +52,5 @@ O backend conecta com uma role sem permissão de DDL e sem `BYPASSRLS`. Só o `b
 
 | Ambiente | PostgreSQL e Valkey | E-mail | Observabilidade |
 |---|---|---|---|
-| Desenvolvimento | Containers no Docker Compose (`docker-compose.yml` na raiz do `boleto-docs`, portas só em `127.0.0.1`, ver [Compose de desenvolvimento](../guias/compose-dev.md)); o backend sobe pelo profile `backend` | Mailpit | Grafana LGTM (profile opcional, Task 11) |
+| Desenvolvimento | Containers no Docker Compose (`docker-compose.yml` na raiz do `boleto-docs`, portas só em `127.0.0.1`, ver [Compose de desenvolvimento](../guias/compose-dev.md)); a migração e o backend sobem no `docker compose up -d` padrão | Mailpit | Grafana LGTM (profile opcional, Task 11) |
 | AWS (futuro) | RDS ou Aurora Serverless e ElastiCache for Valkey | Amazon SES | CloudWatch e X-Ray |

@@ -10,10 +10,10 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Site de documentação (Docusaurus) | `site/` | pronto |
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
-| Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit, o site no profile `docs` e as migrações no profile `migrations`) | `docker-compose.yml` | pronto |
+| Docker Compose de desenvolvimento (`docker compose up -d` sobe PostgreSQL, Valkey, Mailpit, a migração e o backend; o site fica no profile `docs`) | `docker-compose.yml` | pronto |
 | Flyway por JAR e Squawk nas versões centrais (alvo `migrations`, tag `v0.4.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
 | Node e google-java-format no alvo `backend` da sincronização (tag `v0.5.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
-| Serviço `backend` no Compose (profile `backend`, API Spring Boot do repositório `boleto-backend`) | `docker-compose.yml`; guia em `site/docs/guias/compose-dev.md` | pronto (Task 7) |
+| Serviço `backend` no Compose (API Spring Boot do repositório `boleto-backend`, sobe no `up` padrão desde o ADR 0035) | `docker-compose.yml`; guia em `site/docs/guias/compose-dev.md` | pronto (Task 7) |
 | Schema do banco, imagem de migração e testes de isolamento por tenant | repositório `boleto-migrations` (privado); guia em `site/docs/guias/migracoes.md` e modelo em `site/docs/arquitetura/modelo-de-dados.md` | pronto (Task 6, V1) |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
@@ -61,38 +61,33 @@ Veja [Ambiente do desenvolvedor](site/docs/guias/ambiente-do-dev.md) para as op�
 
 ## Compose de desenvolvimento
 
-PostgreSQL, Valkey e Mailpit locais, nas versões do `versions.toml`, com portas só em `127.0.0.1`. Interface do Mailpit em http://localhost:8025. Só comandos padrão do Docker Compose, na raiz do repositório, sem `-f` e sem scripts:
+A aplicação inteira local (PostgreSQL, Valkey, Mailpit, migração e backend), nas versões do `versions.toml`, com portas só em `127.0.0.1`. Precisa dos repositórios `boleto-backend` e `boleto-migrations` ao lado deste. Só comandos padrão do Docker Compose, na raiz do repositório, sem `-f`, sem profile e sem scripts:
 
 ```bash
-docker compose up -d --wait   # sobe a infraestrutura e espera ficar saudável
+docker compose up -d           # sobe infraestrutura, migração e backend (constrói as imagens no 1º uso)
+docker compose up -d --build   # depois de mudar código do backend ou das migrações
+docker compose down            # derruba tudo e mantém os dados
+docker compose down -v         # derruba tudo e apaga os dados
 docker compose ps
-docker compose logs -f valkey
-docker compose down           # para, mantém os dados
-docker compose down -v        # reset: apaga os dados
+docker compose logs -f backend
 ```
 
-Credenciais e portas têm valor padrão no `docker-compose.yml`. O `.env` é opcional (modelo em `.env.example`). As imagens ficam no bloco gerado do próprio arquivo, escrito por `npm run sync`. Testes sem Docker: `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
+Health em `http://localhost:8080/actuator/health`, Swagger em `http://localhost:8080/swagger-ui.html` e interface do Mailpit em http://localhost:8025. Sem `../boleto-backend` ou `../boleto-migrations`, o Compose para com `unable to prepare context: path "..." not found`: clone o que falta ou defina `BACKEND_CONTEXT` e `MIGRATIONS_CONTEXT` (obrigatório em worktree). Credenciais e portas têm valor padrão no `docker-compose.yml`. O `.env` é opcional (modelo em `.env.example`). As imagens ficam no bloco gerado do próprio arquivo, escrito por `npm run sync`. Testes sem Docker: `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
 
-As migrações do banco (repositório `boleto-migrations`, ao lado deste) rodam à parte, no profile `migrations`, e não entram no `up -d --wait` (guia: [Migrações do banco](site/docs/guias/migracoes.md)):
+Só a infraestrutura (a CI do `boleto-docs` usa este comando, sem acesso aos repositórios privados) ou só a migração (guia: [Migrações do banco](site/docs/guias/migracoes.md)):
 
 ```bash
-docker compose run --build --rm flyway   # aplica as migrações e sai (código ≠ 0 em qualquer erro)
+docker compose up -d --wait postgres valkey mailpit   # só PostgreSQL, Valkey e Mailpit
+docker compose run --build --rm flyway                # só a migração (código ≠ 0 em qualquer erro)
 ```
 
-O backend (repositório `boleto-backend`, ao lado deste) sobe no profile `backend`, que também aplica a migração. Sem o profile, o `up -d --wait` acima continua subindo só a infraestrutura:
-
-```bash
-docker compose --profile backend up -d --build --wait   # constrói, migra e sobe o backend (http://localhost:8080)
-docker compose --profile backend down                   # remove os containers e mantém os dados
-```
-
-Health em `http://localhost:8080/actuator/health` e Swagger em `http://localhost:8080/swagger-ui.html`. Em worktree, defina `BACKEND_CONTEXT` e `MIGRATIONS_CONTEXT`. Para subir sem tocar no ambiente que já roda, use `-p <nome>` e outras portas (guia: [Compose de desenvolvimento](site/docs/guias/compose-dev.md#backend-profile-backend)).
+Para subir sem tocar no ambiente que já roda, use `-p <nome>` e outras portas (guia: [Compose de desenvolvimento](site/docs/guias/compose-dev.md#sem-tocar-no-ambiente-que-já-roda)). Decisão: [ADR 0035](site/docs/adr/0035-compose-sobe-a-aplicacao-inteira.md).
 ## Documentação
 
 O site (Docusaurus, com ADRs, diagramas C4 em Mermaid e guias) fica em `site/` e roda em um container Amazon Linux 2023.
 
 ```bash
-docker compose up -d --wait docs   # http://localhost:3000/boleto-docs/ (profile docs)
+docker compose --profile docs up -d --wait docs   # http://localhost:3000/boleto-docs/ (profile docs)
 ```
 
 - Para parar o site, use `docker compose --profile docs down`.

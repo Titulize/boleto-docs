@@ -33,7 +33,9 @@ function services() {
     (m) => ({ name: m[1], text: m[2] }),
   );
 }
-const infra = () => services().filter((s) => !/^ {4}profiles:/m.test(s.text));
+// Serviços do `up` padrão (sem profile) e os que vêm de um registro (sem build local).
+const padrao = () => services().filter((s) => !/^ {4}profiles:/m.test(s.text));
+const infra = () => padrao().filter((s) => !/^ {4}build:/m.test(s.text));
 test('o compose usa o projeto boleto-dev (os volumes do dev continuam os mesmos)', () => {
   assert.match(compose, /^name: boleto-dev\s*$/m);
 });
@@ -49,7 +51,11 @@ test('só existe o compose da raiz (arquivos rastreados de compose/ foram removi
   ])
     assert.ok(!existsSync(resolve(root, p)), `${p} foi removido (ADR 0022)`);
 });
-test('postgres, valkey e mailpit sobem sem profile; o site fica no profile docs', () => {
+test('o up padrão sobe infraestrutura, flyway e backend; só o site fica no profile docs', () => {
+  assert.deepEqual(
+    padrao().map((s) => s.name),
+    ['postgres', 'valkey', 'mailpit', 'flyway', 'backend'],
+  );
   assert.deepEqual(
     infra().map((s) => s.name),
     ['postgres', 'valkey', 'mailpit'],
@@ -58,19 +64,19 @@ test('postgres, valkey e mailpit sobem sem profile; o site fica no profile docs'
   assert.ok(docs, 'serviço docs ausente');
   assert.match(docs.text, /^ {4}profiles:\s*\[docs\]\s*$/m);
 });
-test('o flyway fica no profile migrations, roda uma vez e espera o banco saudável', () => {
+test('o flyway sobe sem profile, roda uma vez e espera o banco saudável', () => {
   const flyway = services().find((s) => s.name === 'flyway');
   assert.ok(flyway, 'serviço flyway ausente');
-  assert.match(flyway.text, /^ {4}profiles:\s*\[migrations, backend\]\s*$/m);
+  assert.doesNotMatch(flyway.text, /^ {4}profiles:/m, 'o flyway sobe no up padrão (ADR 0035)');
   assert.match(flyway.text, /^ {4}restart:\s*['"]?no['"]?\s*$/m);
   assert.match(flyway.text, /^ {6}postgres:\s*\n {8}condition:\s*service_healthy\s*$/m);
   assert.match(flyway.text, /^ {6}FLYWAY_URL:\s*jdbc:postgresql:\/\/postgres:5432\//m);
   assert.match(flyway.text, /^ {6}FLYWAY_PLACEHOLDERS_APP_PASSWORD:/m);
 });
-test('o backend fica no profile backend, em 127.0.0.1, depois do banco saudável e da migração', () => {
+test('o backend sobe sem profile, em 127.0.0.1, depois do banco saudável e da migração', () => {
   const backend = services().find((s) => s.name === 'backend');
   assert.ok(backend, 'serviço backend ausente');
-  assert.match(backend.text, /^ {4}profiles:\s*\[backend\]\s*$/m);
+  assert.doesNotMatch(backend.text, /^ {4}profiles:/m, 'o backend sobe no up padrão (ADR 0035)');
   assert.match(backend.text, /^ {4}restart:\s*['"]?no['"]?\s*$/m);
   assert.match(backend.text, /^ {6}- '127\.0\.0\.1:\$\{BACKEND_PORT:-8080\}:8080'\s*$/m);
   assert.match(backend.text, /^ {6}postgres:\s*\n {8}condition:\s*service_healthy\s*$/m);
@@ -94,6 +100,14 @@ test('toda imagem de infraestrutura vem de uma âncora do bloco gerado, com dige
 });
 test('todo serviço de infraestrutura tem healthcheck (o --wait depende dele)', () => {
   for (const s of infra()) assert.match(s.text, /^ {4}healthcheck:/m, `${s.name} sem healthcheck`);
+});
+test('a CI do boleto-docs sobe só a infraestrutura, nomeando os serviços (sem acesso aos repos privados)', () => {
+  const ci = read('.github/workflows/ci.yml');
+  const ups = [...ci.matchAll(/^\s*docker compose up\b.*$/gm)].map((m) => m[0].trim());
+  assert.ok(ups.length > 0);
+  for (const u of ups) assert.match(u, /postgres valkey mailpit$/, `up sem nomear a infraestrutura: ${u}`);
+  assert.match(ci, /docker compose config --images postgres valkey mailpit/);
+  assert.match(ci, /docker compose pull postgres valkey mailpit/);
 });
 test('toda porta publicada fica em 127.0.0.1', () => {
   const ports = [...compose.matchAll(/^\s+- ['"]?([^'"\n]+:\d+)['"]?\s*$/gm)]

@@ -1,27 +1,32 @@
 # Compose do boleto-docs, na raiz do repositório. Só use os comandos padrão do Docker Compose:
 #
-#   docker compose up -d --wait   sobe PostgreSQL, Valkey e Mailpit e espera ficarem saudáveis
+#   docker compose up -d           sobe PostgreSQL, Valkey, Mailpit, a migração (flyway) e o backend
+#                                  (constrói as imagens no primeiro uso; precisa de ../boleto-backend
+#                                  e ../boleto-migrations ao lado deste repositório)
+#   docker compose up -d --build   reconstrói as imagens depois de mudar o backend ou as migrações
+#   docker compose down            derruba tudo e mantém os dados
+#   docker compose down -v         derruba tudo e apaga os dados
 #   docker compose ps
-#   docker compose logs -f valkey
-#   docker compose down           para e mantém os dados
-#   docker compose down -v        reset: apaga os dados
-#   docker compose --profile docs up -d --wait   sobe também o site de documentação
-#   docker compose run --build --rm flyway   aplica as migrações uma vez (não para o postgres)
-#       (precisa do boleto-migrations ao lado, em ../boleto-migrations; sai com código
-#       diferente de zero se uma migração falhar; os comandos acima não executam o flyway)
-#   docker compose --profile backend up -d --build --wait   sobe o backend (build de ../boleto-backend)
-#       com o postgres, a migração (flyway) e a espera da saúde do backend
+#   docker compose logs -f backend
+#   docker compose up -d --wait postgres valkey mailpit   só a infraestrutura, esperando ficar saudável
+#       (é o que a CI do boleto-docs faz: ela não tem acesso aos repositórios privados)
+#   docker compose run --build --rm flyway   só a migração (sobe o postgres se preciso; sai com
+#       código diferente de zero se uma migração falhar)
+#   docker compose --profile docs up -d --wait docs   sobe também o site de documentação
+#
+# Sem ../boleto-backend ou ../boleto-migrations, o build falha com `unable to prepare context: path
+# "..." not found`. Em worktree do git esse caminho não resolve: aponte BACKEND_CONTEXT e
+# MIGRATIONS_CONTEXT para os diretórios dos repositórios (modelo em .env.example).
 #
 # As imagens (tag e digest) ficam no bloco gerado abaixo, escrito pela sincronização a partir
 # do versions.toml (npm run sync). Nunca edite o bloco: a CI falha se ele divergir.
 # As credenciais e as portas têm valor padrão de desenvolvimento neste arquivo. Para trocar,
 # crie um .env na raiz (modelo em .env.example). O .env não vai para o git.
 #
-# O schema e as roles do banco são do boleto-migrations, aplicados pelo serviço flyway (profile
-# migrations, execução única, ADR 0027). Sem o profile, `up -d --wait`, `down` e `down -v` continuam
-# valendo só para a infraestrutura.
-# O backend (profile backend, ADR 0034) puxa o postgres e a migração sozinho. Em worktree, aponte
-# BACKEND_CONTEXT e MIGRATIONS_CONTEXT para os diretórios dos repositórios (modelo em .env.example).
+# O schema e as roles do banco são do boleto-migrations, aplicados pelo serviço flyway (execução
+# única, ADR 0027). O backend espera o banco saudável e a migração concluída (ADR 0034). Os dois
+# sobem no `up` padrão (ADR 0035, que substitui em parte os ADRs 0022 e 0034). Só o site fica em
+# profile (docs).
 # O Task 11 acrescenta o serviço otel-lgtm com `profiles: [observability]`.
 name: boleto-dev
 
@@ -78,13 +83,11 @@ services:
       timeout: 5s
       retries: 20
       start_period: 5s
-  # Migrações do banco (boleto-migrations): executa uma vez e sai. Fica no profile migrations para
-  # que `docker compose up -d --wait` suba só a infraestrutura. O comando é
-  # `docker compose run --build --rm flyway`: ele ativa o profile e sobe o postgres antes. Não use
+  # Migrações do banco (boleto-migrations): executa uma vez e sai (código 0) a cada `up`; o backend
+  # espera por ela. Para rodar só a migração use `docker compose run --build --rm flyway`. Não use
   # `up --exit-code-from flyway`: implica --abort-on-container-exit e para o postgres no fim.
   # Em produção a mesma imagem é o primeiro passo do deploy (ADR 0027).
   flyway:
-    profiles: [migrations, backend]
     build:
       context: ${MIGRATIONS_CONTEXT:-../boleto-migrations}
     image: boleto-migrations:dev
@@ -98,12 +101,11 @@ services:
       FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
       # Senha da role boleto_app (a que o backend usa), aplicada a cada execução pelo afterMigrate.
       FLYWAY_PLACEHOLDERS_APP_PASSWORD: ${BOLETO_APP_PASSWORD:-boleto_app_dev}
-  # API Spring Boot (boleto-backend). Só sobe com o profile backend, que também ativa o flyway e o
-  # postgres: o backend espera o banco saudável e a migração concluída com sucesso (ADR 0027).
-  # Não depende do valkey (o Task 9 acrescenta). A documentação da API (Swagger UI) fica ligada só
-  # aqui, no dev (ADR 0032). O contexto de build é ../boleto-backend; em worktree use BACKEND_CONTEXT.
+  # API Spring Boot (boleto-backend). Espera o banco saudável e a migração concluída com sucesso
+  # (ADR 0027). Não depende do valkey (o Task 9 acrescenta). A documentação da API (Swagger UI) fica
+  # ligada só aqui, no dev (ADR 0032). O contexto de build é ../boleto-backend; em worktree use
+  # BACKEND_CONTEXT.
   backend:
-    profiles: [backend]
     build:
       context: ${BACKEND_CONTEXT:-../boleto-backend}
     image: boleto-backend:dev
@@ -128,8 +130,8 @@ services:
       retries: 20
       start_period: 60s
 
-  # Site de documentação (Docusaurus). Só sobe com o profile docs, para que
-  # `docker compose up -d --wait` suba apenas a infraestrutura.
+  # Site de documentação (Docusaurus). Só sobe com o profile docs (--profile docs), para que o
+  # `docker compose up -d` padrão não construa o site.
   docs:
     profiles: [docs]
     build:

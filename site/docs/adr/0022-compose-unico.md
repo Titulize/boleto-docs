@@ -4,9 +4,11 @@ title: 'ADR 0022: Compose único, só com comandos padrão'
 
 # ADR 0022: Compose único, só com comandos padrão
 
-- **Status:** Aceito
+- **Status:** Substituído em parte pelo [ADR 0035](./0035-compose-sobe-a-aplicacao-inteira.md)
 - **Data:** 2026-11-21
 - **Substitui em parte:** [ADR 0020](./0020-compose-dev.md)
+
+> **Substituído em parte pelo [ADR 0035](./0035-compose-sobe-a-aplicacao-inteira.md):** o `up -d --wait` sem profile deixa de subir só a infraestrutura: ele passa a subir também a migração (`flyway`) e o `backend`, e o `down` os derruba. O `docs` continua no profile `docs`. Continuam valendo o arquivo único, o `name: boleto-dev`, as imagens no bloco gerado, os valores padrão e o uso só de comandos padrão.
 
 ## Contexto
 

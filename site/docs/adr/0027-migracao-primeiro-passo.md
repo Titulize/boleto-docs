@@ -4,8 +4,10 @@ title: 'ADR 0027: A migração é o primeiro passo do deploy'
 
 # ADR 0027: A migração é o primeiro passo do deploy
 
-- **Status:** Aceito
+- **Status:** Substituído em parte pelo [ADR 0035](./0035-compose-sobe-a-aplicacao-inteira.md)
 - **Data:** 2026-11-21
+
+> **Substituído em parte pelo [ADR 0035](./0035-compose-sobe-a-aplicacao-inteira.md):** em desenvolvimento, o serviço `flyway` deixa de ficar no profile `migrations` e sobe no `docker compose up -d` padrão (`docker compose run --build --rm flyway` continua servindo para rodar só a migração). A migração como primeiro passo do deploy e o código de saída não mudam.
 
 ## Contexto
 

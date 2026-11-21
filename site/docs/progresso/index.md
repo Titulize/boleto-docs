@@ -13,7 +13,7 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | [02](./task-02-docusaurus.md) | Site de documentação viva (Docusaurus) | Concluída | 2026-11-20 |
 | [03](./task-03-sincronizacao.md) | Sincronização de versões | Concluída | 2026-11-20 |
 | [04](./task-04-bootstrap.md) | Scripts de bootstrap do ambiente do dev | Concluída | 2026-11-20 |
-| [05](./task-05-compose-dev.md) | Compose de desenvolvimento (infraestrutura) | Concluída | 2026-11-21 |
+| [05](./task-05-compose-dev.md) | Compose de desenvolvimento (infraestrutura) | Concluída | 2026-11-22 |
 | [06](./task-06-boleto-migrations.md) | Repositório `boleto-migrations` (Flyway) | Concluída | 2026-11-22 |
 | [07](./task-07-esqueleto-backend.md) | Esqueleto do backend | Concluída | 2026-11-22 |
 | 08 | Base multi-tenant e auditoria | Não iniciada | |
@@ -24,3 +24,5 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | 13 | Telas de Login | Não iniciada | |
 | 14 | CI/CD e cadeia de suprimentos | Não iniciada | |
 | 15 | Documentação final e validação do onboarding | Não iniciada | |
+
+**Nota (2026-11-22):** o `docker compose up -d` passou a subir a aplicação inteira (infraestrutura, migração e backend), sem profile ([ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)). As notas posteriores estão nos registros dos Tasks [5](./task-05-compose-dev.md), [6](./task-06-boleto-migrations.md) e [7](./task-07-esqueleto-backend.md).

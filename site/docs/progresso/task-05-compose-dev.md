@@ -7,7 +7,7 @@ title: 'Task 05: Compose de desenvolvimento'
 
 - **Situação:** Concluída
 - **Início:** 2026-11-20
-- **Última atualização:** 2026-11-21 (revisão: compose único, [ADR 0022](../adr/0022-compose-unico.md))
+- **Última atualização:** 2026-11-22 (revisão: compose único, [ADR 0022](../adr/0022-compose-unico.md))
 - **Repositórios:** `boleto-docs`
 
 
@@ -121,6 +121,10 @@ Os resultados da CI do PR ficam na seção seguinte, preenchida depois da integr
 - Se a regra de proteção da `main` exigir o job `Compose (Windows PowerShell 5.1)` pelo nome, precisa ser retirada da lista de checks obrigatórios.
 - Revisão do avaliador: o teste exigia a ausência da pasta `compose/`, e o `compose/.env` do dev (ignorado pelo git) a mantém depois do pull, o que faria `npm test` falhar na máquina dele (a CI, com checkout limpo, passava). O teste agora confere só os arquivos rastreados. Guia e ADR 0022 dizem para copiar os valores do `compose/.env` para o `.env` da raiz e apagar `compose/`.
 
+## Nota posterior (2026-11-22): `up` padrão sobe a aplicação inteira
+
+Este registro descreve o estado da época e não foi reescrito. O [ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md) mudou o uso: o `docker compose up -d` sem profile passou a subir também a migração e o backend, e o `docker compose down` os derruba. Só o `docs` continua em profile. Para subir apenas PostgreSQL, Valkey e Mailpit, como nas demonstrações acima, use `docker compose up -d --wait postgres valkey mailpit`. A CI do `boleto-docs` faz isso. O guia [Compose de desenvolvimento](../guias/compose-dev.md) tem os comandos atuais.
+
 ## Histórico
 
 | Data | Atualização |
@@ -129,3 +133,4 @@ Os resultados da CI do PR ficam na seção seguinte, preenchida depois da integr
 | 2026-11-20 | PR #4 com todos os jobs verdes. Task concluída e integrada por squash |
 | 2026-11-21 | CI falhou no `6650ff5` por limite de pulls. Cache das imagens na CI (ADR 0021) |
 | 2026-11-21 | Revisão: compose único na raiz, sem atalhos, imagens em bloco gerado (ADR 0022) |
+| 2026-11-22 | Nota: o `up` padrão passou a subir a aplicação inteira, sem profile ([ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)) |

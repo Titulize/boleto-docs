@@ -2,8 +2,10 @@
 title: 'ADR 0034: Serviço backend no Compose'
 ---
 # ADR 0034: Serviço `backend` no Compose
-- **Status:** Aceito
+- **Status:** Substituído em parte pelo [ADR 0035](./0035-compose-sobe-a-aplicacao-inteira.md)
 - **Data:** 2026-11-21
+> **Substituído em parte pelo [ADR 0035](./0035-compose-sobe-a-aplicacao-inteira.md):** o `backend` e o `flyway` deixam de usar profiles (`backend` e `migrations`) e sobem no `docker compose up -d` padrão, e `docker compose down` os derruba. O comando `--profile backend up -d --build --wait` deixa de existir. Continuam valendo o build por `BACKEND_CONTEXT` e `MIGRATIONS_CONTEXT`, o `depends_on`, a porta em `127.0.0.1`, o healthcheck e as variáveis.
+
 ## Contexto
 O [ADR 0022](./0022-compose-unico.md) fixou um Compose único, só com comandos padrão, e o [ADR 0027](./0027-migracao-primeiro-passo.md) fez da migração o primeiro passo do deploy. O backend precisa subir no mesmo Compose do dev sem mudar o que `docker compose up -d --wait` faz.
 ## Decisão
