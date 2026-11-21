@@ -7,7 +7,7 @@ title: 'Task 05: Compose de desenvolvimento'
 
 - **Situação:** Concluída
 - **Início:** 2026-11-20
-- **Última atualização:** 2026-11-20
+- **Última atualização:** 2026-11-21
 - **Repositórios:** `boleto-docs`
 
 ## Objetivo
@@ -59,9 +59,12 @@ Todos passaram na primeira execução: CI / Validar versions.toml e testes, CI /
 - **`Join-Path` com `\`** (`.platform\versions.env`) quebraria o `dev.ps1` no PowerShell 7 em Linux, onde a CI o executa. Trocado por `/`, que funciona nos dois sistemas. Encontrado antes de enviar.
 - **Build do site falhou com `ENOTEMPTY`** em `/app/node_modules` no projeto Compose `boleto-docs`. O volume `docs_node_modules` é compartilhado com o checkout principal do `boleto-docs`. Rodado com `docker compose -p boleto-docs-wt run --rm --no-deps docs sh -c "npm ci && npm run build"`, passou.
 
+- **CI falhou no commit `6650ff5` (`main`, squash do PR #4), job `Compose de desenvolvimento (Linux)`, passo `Baixar as imagens (até 3 tentativas)`.** O log da tentativa 1 mostra `error from registry: Data limit exceeded` no pull do PostgreSQL (`public.ecr.aws`) nas três tentativas do passo, em cerca de 65 segundos. A reexecução (tentativa 2) passou. A hipótese inicial, limite do Docker Hub, estava errada: o Valkey e o Mailpit (`docker.io`) não chegaram a falhar, e o recusado foi o `public.ecr.aws`. Este registro não tinha essa falha, e o PR #4 tinha passado sem ela. Correção: cache das imagens na CI, com chave derivada da lista de imagens com digest, e o passo imprime `CACHE HIT` ou `CACHE MISS` e pula o pull quando há acerto ([ADR 0021](../adr/0021-cache-imagens-ci.md)). Alternativa registrada e não adotada: `docker login` no Docker Hub com conta gratuita.
+
 ## Decisões e desvios do plano
 
 - Decisões no [ADR 0020](../adr/0020-compose-dev.md): `compose/` separado do compose do site, imagens só pelo `versions.env`, portas em loopback, Valkey com senha, `reset` com confirmação.
+- Cache das imagens na CI: [ADR 0021](../adr/0021-cache-imagens-ci.md).
 - Valkey no lugar do Redis do plano original ([ADR 0006](../adr/0006-valkey.md)).
 - O profile `observability` ficou para o Task 11.
 
@@ -76,3 +79,4 @@ Todos passaram na primeira execução: CI / Validar versions.toml e testes, CI /
 |---|---|
 | 2026-11-20 | Compose, atalhos, verificação, testes, CI e documentação. Demo local passou |
 | 2026-11-20 | PR #4 com todos os jobs verdes. Task concluída e integrada por squash |
+| 2026-11-21 | CI falhou no `6650ff5` por limite de pulls. Cache das imagens na CI (ADR 0021) |
