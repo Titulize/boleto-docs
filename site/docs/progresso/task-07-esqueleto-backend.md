@@ -3,7 +3,7 @@ sidebar_position: 7
 title: 'Task 07: Esqueleto do backend'
 ---
 # Task 07: Esqueleto do backend
-- **Situação:** Em andamento (código do backend integrado; falta integrar este PR do `boleto-docs` com a CI verde)
+- **Situação:** Em andamento (backend e `boleto-docs` integrados com a CI verde; falta só corrigir o README do `boleto-backend`)
 - **Início:** 2026-11-21
 - **Última atualização:** 2026-11-21
 - **Repositórios:** `boleto-docs`, `boleto-backend`
@@ -104,11 +104,10 @@ Não verificado:
 - [ADR 0032](../adr/0032-esqueleto-do-backend.md), [0033](../adr/0033-wrapper-qualidade-e-ci-do-backend.md) e [0034](../adr/0034-servico-backend-no-compose.md): decisões do plano.
 - A demonstração usou `-p boleto-demo` em vez do `boleto-t07` do plano.
 ## Pendências
-- Abrir o PR do `boleto-docs` (`feat/task-07-backend-compose-docs`), acompanhar todos os workflows (`CI` e `Documentação`) e integrar por squash. Este registro e o `tasks.md` mudam para "Concluída" depois disso.
-- Ajustar o README do `boleto-backend` (`/swagger-ui` para `/swagger-ui.html`) em outro PR do backend.
+- Ajustar o README do `boleto-backend` (`/swagger-ui` para `/swagger-ui.html`) em outro PR do backend. A tarefa muda para "Concluída" depois disso.
 - Para outros tasks: Valkey, Lettuce e Bucket4j no Task 9; schema nos testes do backend no Task 8; smoke de migração mais backend na CI e verificação de dependências do Gradle no Task 14.
 ## Histórico
 | Data | Atualização |
 |---|---|
 | 2026-11-21 | A0 (tag `v0.5.0`) e esqueleto do `boleto-backend` integrados |
-| 2026-11-21 | Serviço `backend` no Compose, demonstração, ADRs 0031 a 0034 e documentação |
+| 2026-11-21 | Serviço `backend` no Compose, demonstração, ADRs 0031 a 0034 e documentação || 2026-11-21 | PR #11 do `boleto-docs` integrado; pendência restante: README do `boleto-backend` |
