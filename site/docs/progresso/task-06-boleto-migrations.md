@@ -5,9 +5,9 @@ title: 'Task 06: Repositório boleto-migrations'
 
 # Task 06: Repositório `boleto-migrations` (Flyway)
 
-- **Situação:** Em andamento. Código, testes e CI dos dois repositórios estão integrados e verdes. Faltam o PR desta documentação (parte C) e três ajustes pequenos no `boleto-migrations` (ver [Pendências](#pendências))
+- **Situação:** Concluída
 - **Início:** 2026-11-21
-- **Última atualização:** 2026-11-21
+- **Última atualização:** 2026-11-22
 - **Repositórios:** `boleto-docs`, `boleto-migrations`
 
 ## Objetivo
@@ -33,10 +33,15 @@ Parte B, no `boleto-migrations` (PR [#1](https://github.com/Titulize/boleto-migr
 - CI: `Conventional Commits` (só em PR) e o job do banco (sync, ShellCheck, lint, isolamento, negativos), com cache das imagens ([ADR 0021](../adr/0021-cache-imagens-ci.md)). Actions fixadas por SHA.
 - README com conteúdo, uso, variáveis, contrato da imagem, regra expand/contract, como acrescentar uma tela e o aviso do CNPJ de teste.
 
-Parte C, no `boleto-docs` (esta documentação):
+Parte C, no `boleto-docs` (PR [#8](https://github.com/Titulize/boleto-docs/pull/8), squash `d251c10`):
 
 - Este registro e o índice; [ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md); nova página [Modelo de dados](../arquitetura/modelo-de-dados.md); novo guia [Migrações do banco](../guias/migracoes.md); ajustes em `containers.md`, `multitenancy-e-auditoria.md`, `compose-dev.md`, `versoes.md`, `padrao-do-projeto.md` (verificações do `boleto-migrations` e migração de dados em tabela de tenant), nos ADRs 0026 e 0028, no README e no comentário do serviço `flyway` do `docker-compose.yml` (agora cita `run --build --rm flyway`).
 
+Fechamento, no `boleto-migrations` (PR [#2](https://github.com/Titulize/boleto-migrations/pull/2), squash `a2328e7`), sem mudança de SQL, política ou role:
+- README: seção "Migração de dados e RLS forçado" (backfill como `boleto_owner` sem `app.tenant_id` afeta 0 linhas sem erro, com o padrão correto) e seção "TLS na conexão de produção" (`sslmode=verify-full`).
+- `tests/negativos.sh`: os casos 4, 5 e 6 exigem a mensagem real (`password authentication failed`, `Unable to obtain connection`, `Detected resolved migration not applied to database`) e as três regras do Squawk (`ban-drop-column`, `renaming-column`, `adding-not-nullable-field`).
+- `compose.test.yml`: o comentário do topo cita `run --build --rm tests`.
+Fechamento, no `boleto-docs` (este PR): registro e índice como "Concluída", aviso de `sslmode=verify-full` e padrão de backfill com `SET LOCAL` no guia [Migrações do banco](../guias/migracoes.md), e `tasks.md`.
 ## Verificação
 
 Parte A, no worktree do `boleto-docs` (Windows, Docker 29.8.0):
@@ -62,7 +67,7 @@ Parte B, no worktree do `boleto-migrations`, registro do commit `9673a5a`:
 | Casos negativos | `bash tests/negativos.sh` | migração alterada, SQL inválido, senha errada, banco inacessível, variáveis ausentes, `validate` com pendência, lint e CNPJ configurável saíram como esperado |
 | Demonstração | projeto `boleto-t6`, porta 15432 | `migrate` aplicou a V1, `psql` mostrou o schema |
 
-Parte C, no worktree `boleto-docs/.worktrees/task-06-docs`:
+Parte C, no worktree do `boleto-docs`:
 
 | O quê | Como | Resultado |
 |---|---|---|
@@ -82,8 +87,14 @@ As verificações locais restantes (`commitlint`, `validate`, `sync:check`, `npm
 | `boleto-docs` | Documentação (build e publicação no Pages) | `main` depois do squash `b8290f7` | [44875700415](https://github.com/Titulize/boleto-docs/actions/runs/44875700415) | verde |
 | `boleto-migrations` | CI (`Conventional Commits` 19 s e `Lint, imagem e testes de isolamento` 2 min 17 s) | PR #1 | [44879522723](https://github.com/Titulize/boleto-migrations/actions/runs/44879522723) | verde |
 | `boleto-migrations` | CI | `main` depois do squash `9673a5a` | [44879738999](https://github.com/Titulize/boleto-migrations/actions/runs/44879738999) | verde |
-
-A CI e a Documentação do PR desta parte C ainda não rodaram (o PR é aberto depois deste registro). Quando rodarem, as linhas entram aqui.
+| `boleto-docs` | CI | PR #8 (parte C) | [44880817521](https://github.com/Titulize/boleto-docs/actions/runs/44880817521) | verde |
+| `boleto-docs` | Documentação | PR #8 | [44880817526](https://github.com/Titulize/boleto-docs/actions/runs/44880817526) | verde |
+| `boleto-docs` | CI | `main` depois do squash `d251c10` | [44880967079](https://github.com/Titulize/boleto-docs/actions/runs/44880967079) | verde |
+| `boleto-docs` | Documentação | `main` depois do squash `d251c10` | [44880967080](https://github.com/Titulize/boleto-docs/actions/runs/44880967080) | verde |
+| `boleto-migrations` | CI (`Conventional Commits` e `Lint, imagem e testes de isolamento`) | PR #2 (fechamento) | [44881885505](https://github.com/Titulize/boleto-migrations/actions/runs/44881885505) | verde |
+| `boleto-migrations` | CI (o job de commits só roda em PR e foi ignorado) | `main` depois do squash `a2328e7` | [44882064522](https://github.com/Titulize/boleto-migrations/actions/runs/44882064522) | verde |
+Os workflows do PR de fechamento do `boleto-docs` (este) e da `main` depois dele constam no relatório final da tarefa: citá-los aqui exigiria outro PR.
+Verificação do PR #2 do `boleto-migrations`, no worktree dele: `bash tests/negativos.sh` (casos 1 a 7 passaram), ShellCheck dos 5 `.sh` (0), `node .platform/sync-versions.mjs check --remote` (0), `docker build --target lint .` (0), `docker compose -p boleto-migrations-test -f compose.test.yml run --build --rm tests` ("todos os testes passaram", seguido de `down -v`) e `commitlint` (0). A CI repetiu o teste de isolamento e os casos negativos.
 
 ## Falhas e correções
 
@@ -95,6 +106,9 @@ A CI e a Documentação do PR desta parte C ainda não rodaram (o PR é aberto d
 - **A lista mínima de JARs precisou de mais dois módulos** (`flyway-command-mcp` e `flyway-command-test-connection`), por causa de `NoClassDefFoundError: org/flywaydb/mcp/McpConfigurationLoader`.
 - **Variáveis do shell herdadas de uma demonstração anterior** (`COMPOSE_PROJECT_NAME` e portas `2xxxx`) fizeram o `docker compose up -d --wait` da verificação subir o projeto `boleto-demo-uni`, e não o `boleto-dev`. O `boleto-dev` não foi tocado, e os recursos criados foram removidos.
 - **`versions.toml` com linhas de log.** O gerador da tabela de JARs gravou mensagens no arquivo, e o `npm run validate` acusou TOML inválido. As linhas saíram antes de qualquer commit.
+- **`bash tests/negativos.sh` falhou no caso 1 no fechamento** (`saída sem 'Successfully applied'`): duas execuções rodaram ao mesmo tempo no projeto `boleto-migrations-neg`, e a segunda encontrou a V1 já aplicada. Sozinha, passou inteira. O código não mudou.
+- **Ambiente local do fechamento:** o `bash` do PATH é o do WSL e falhou com `execvpe(/bin/bash)` (usado o Git Bash). No worktree novo faltava `node_modules`, e o `npx commitlint` esperava confirmação de instalação (`npm ci` resolveu).
+- **A pasta `boleto-docs/.worktrees/task-06-versions` ficou vazia e presa por outro processo.** `Remove-Item` falhou. O git já a desregistrou, e ela não afeta nenhum arquivo.
 - **Falhas locais da parte B não foram registradas.** O registro do commit `9673a5a` diz que todas as verificações passaram, sem listar tentativas anteriores. Se houve falha intermediária, este registro não a tem.
 
 ## Decisões e desvios do plano
@@ -107,13 +121,13 @@ A CI e a Documentação do PR desta parte C ainda não rodaram (o PR é aberto d
 
 ## Pendências
 
-- PR desta parte C: rodar `commitlint`, abrir o PR, acompanhar a CI e a Documentação, integrar por squash e acompanhar os dois workflows da `main`. Depois disso este registro passa a "Concluída".
-- No `boleto-migrations` (PR pequeno, achados da revisão da parte B, todos sem efeito no isolamento): (1) o README ainda não avisa que migração de dados como `boleto_owner` afeta 0 linhas sob RLS forçado; (2) o README ainda não exige `sslmode=verify-full` na `FLYWAY_URL` de produção; (3) `tests/negativos.sh` aceita qualquer falha nos casos de lint, de rede e de `validate`, e deveria exigir a regra do Squawk (por exemplo `ban-drop-column`) e a mensagem do Flyway. O comentário no topo do `compose.test.yml` também ainda cita `up --abort-on-container-exit`, que não funciona (usar `run`).
+Nada pendente deste Task. O que segue pertence a outras tarefas:
+
 - Task 8: definir `app.tenant_id` e `app.tenant_origem_id` só a partir do JWT validado; confirmar `revinfo_seq` (incremento 50) com `ddl-auto=validate`; decidir a auditoria do catálogo `tela` (nome, menu e ordem).
-- Task 14: publicar a imagem de migração (multi-arquitetura, x64 e Graviton) e encadear migração, backend e frontend no pipeline.
-- Frontend (Task 12 em diante): a barra de administração para assumir empresa. O banco já tem o suporte.
-- A CI do `boleto-migrations` roda só em x64, e o build multi-arquitetura não foi verificado.
-- Resíduo local: o diretório vazio `boleto-docs/.worktrees/task-06-versions` ficou preso por outro processo (o git já o desregistrou). Apagar quando o processo soltar.
+- Task 12 em diante (frontend): a barra de administração para assumir empresa. O banco já tem o suporte.
+- Task 14: publicar a imagem de migração (multi-arquitetura, x64 e Graviton) e encadear migração, backend e frontend no pipeline. A CI do `boleto-migrations` roda só em x64, e o build multi-arquitetura não foi verificado.
+
+Não verificado no fechamento: o código de saída do `compose run ... tests` local (a CI repetiu e passou), a exclusão da branch remota `docs/task-06-fechamento` do `boleto-migrations` e o link do ADR 0030 no README dele.
 
 ## Histórico
 
@@ -122,3 +136,4 @@ A CI e a Documentação do PR desta parte C ainda não rodaram (o PR é aberto d
 | 2026-11-21 | Parte A: JARs do Flyway e Squawk no `versions.toml`, sincronização, serviço `flyway` no Compose e ADRs 0023 a 0029. Tag `v0.4.0` |
 | 2026-11-21 | Parte B: `boleto-migrations` com imagem, V1, roles, RLS, testes de isolamento, lint e CI (PR #1) |
 | 2026-11-21 | Parte C: documentação final, ADR 0030, modelo de dados e guia de migrações |
+| 2026-11-22 | Fechamento: README e `negativos.sh` do `boleto-migrations` (PR #2), guia de migrações e Task 6 concluída |
