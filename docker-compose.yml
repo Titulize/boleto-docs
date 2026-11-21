@@ -6,7 +6,7 @@
 #   docker compose down           para e mantém os dados
 #   docker compose down -v        reset: apaga os dados
 #   docker compose --profile docs up -d --wait   sobe também o site de documentação
-#   docker compose up --build --exit-code-from flyway flyway   aplica as migrações uma vez
+#   docker compose run --build --rm flyway   aplica as migrações uma vez (não para o postgres)
 #       (precisa do boleto-migrations ao lado, em ../boleto-migrations; sai com código
 #       diferente de zero se uma migração falhar; os comandos acima não executam o flyway)
 #

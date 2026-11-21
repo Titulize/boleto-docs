@@ -37,14 +37,17 @@ Parte A, no worktree `boleto-docs/.worktrees/task-06-versions` (Windows, Docker 
 | `npm run validate`, `npm run sync:check`, `npm test` | na raiz do worktree | `versions.toml` válido, versões em dia, 42 testes passaram (32 antes; novos: validação dos JARs, `flyway-jars.lock`, bloco `x-images` do `compose.test.yml`, serviço `flyway`) |
 | Compose | `docker compose config --quiet` e `docker compose --profile migrations config --quiet` (sem a pasta `../boleto-migrations`) | os dois saíram 0 |
 | Comandos padrão não executam o `flyway` | `docker compose up -d --wait` | subiram só PostgreSQL, Valkey e Mailpit |
+| Tamanho dos 24 JARs | `HEAD` de cada URL do Maven Central, soma de `Content-Length` | 6.275.190 bytes |
 | Build do site | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` | saiu 0, sem links quebrados |
 | CNPJ de teste fora do repositório público | `git grep -n` do número no `boleto-docs` | sem resultado |
 | `bootstrap/` intacto | `git diff --stat origin/main -- bootstrap` | sem mudanças (sem ShellCheck nem testes do PowerShell) |
 
-Não verificado nesta parte: a imagem do `boleto-migrations` (parte B), o `docker compose up flyway` de ponta a ponta (depende do repositório `boleto-migrations`, ainda vazio) e a CI do PR.
+Não verificado nesta parte: a imagem do `boleto-migrations` (parte B), o `docker compose run --build --rm flyway` de ponta a ponta (depende do repositório `boleto-migrations`, ainda vazio) e a CI do PR.
 
 ## Falhas e correções
 
+- **Primeiro build do site da revisão falhou** com ENOENT em `/app/build/__server/server.bundle.js` (`build/` antigo no bind mount). A segunda execução do mesmo comando passou, sem mudar arquivos.
+- **Achado da revisão: `up --exit-code-from` pararia o PostgreSQL.** O comando documentado primeiro implicava `--abort-on-container-exit`. Trocado por `docker compose run --build --rm flyway` em README, `docker-compose.yml`, guia do Compose e ADR 0027.
 - **A imagem Corretto headless não põe `java` no `PATH`.** O primeiro teste do spike falhou com `java: command not found`. O JVM fica em `$JAVA_HOME/bin/java`. O entrypoint do `boleto-migrations` chama esse caminho.
 - **Montar a pasta de JARs em `/lib` quebrou o container** (`No such file or directory` ao executar o `java`), porque `/lib` é um link para `/usr/lib` no Amazon Linux 2023. Os JARs ficam em `/flyway/lib`.
 - **A lista mínima de JARs precisou de mais dois módulos.** Sem `flyway-command-mcp` e `flyway-command-test-connection`, a classe principal falhou com `NoClassDefFoundError: org/flywaydb/mcp/McpConfigurationLoader`. Os dois entraram na lista.
@@ -58,6 +61,7 @@ Não verificado nesta parte: a imagem do `boleto-migrations` (parte B), o `docke
 
 ## Pendências
 
+- Parte B: executar `docker compose run --build --rm flyway` de ponta a ponta com outro nome de projeto e outras portas, registrar o resultado e conferir que o PostgreSQL continua de pé; conferir também os nomes de funções, variáveis de sessão e roles citados em `containers.md` e `multitenancy-e-auditoria.md` contra a V1 real.
 - Parte B: repositório `boleto-migrations` (imagem, schema `V1`, roles, RLS, testes de isolamento, lint de SQL, CI e README).
 - Tag do `boleto-docs` depois do merge da parte A, que o `boleto-migrations` fixa.
 - Parte C: este registro completo, `modelo-de-dados.md`, guia de migrações e `tasks.md`.

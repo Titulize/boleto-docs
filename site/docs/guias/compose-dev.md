@@ -63,10 +63,10 @@ docker compose run --rm --no-deps docs sh -c "npm ci && npm run build"
 O serviço `flyway` usa a imagem do repositório `boleto-migrations`, que precisa estar ao lado do `boleto-docs` (`../boleto-migrations`). Ele fica no profile `migrations` para que `docker compose up -d --wait`, `down` e `down -v` continuem tratando só a infraestrutura ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)). A migração é um comando à parte:
 
 ```bash
-docker compose up --build --exit-code-from flyway flyway   # sobe o PostgreSQL, aplica as migrações e sai
-docker compose --profile migrations ps -a                  # o flyway aparece como Exited (0)
+docker compose run --build --rm flyway   # sobe o PostgreSQL se preciso, aplica as migrações e sai
 ```
 
+- O comando usa `run --rm` e não `up --exit-code-from`: este implica `--abort-on-container-exit` e pararia o PostgreSQL ao fim. O `run` deixa o banco rodando e o container do `flyway` é removido. O código de saída do comando é o do Flyway (`echo $?`).
 - O comando espera o PostgreSQL ficar saudável (`depends_on` com `service_healthy`), roda `migrate` e `validate` e sai com o código do Flyway. Qualquer falha (SQL inválido, migração aplicada e depois alterada, senha errada) termina com código diferente de zero.
 - Rodar de novo é seguro: sem migração nova, o Flyway não faz nada.
 - `docker compose up -d --wait` não executa o `flyway`. `down -v` apaga o banco, e a próxima migração recria o schema.

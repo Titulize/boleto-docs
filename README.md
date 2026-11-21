@@ -73,7 +73,7 @@ Credenciais e portas têm valor padrão no `docker-compose.yml`. O `.env` é opc
 As migrações do banco (repositório `boleto-migrations`, ao lado deste) rodam à parte, no profile `migrations`, e não entram no `up -d --wait`:
 
 ```bash
-docker compose up --build --exit-code-from flyway flyway   # aplica as migrações e sai (código ≠ 0 em qualquer erro)
+docker compose run --build --rm flyway   # aplica as migrações e sai (código ≠ 0 em qualquer erro)
 ```
 
 ## Documentação
