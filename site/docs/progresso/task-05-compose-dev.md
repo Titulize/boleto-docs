@@ -10,6 +10,7 @@ title: 'Task 05: Compose de desenvolvimento'
 - **Última atualização:** 2026-11-21 (revisão: compose único, [ADR 0022](../adr/0022-compose-unico.md))
 - **Repositórios:** `boleto-docs`
 
+
 ## Objetivo
 
 Subir PostgreSQL, Valkey e Mailpit locais com um comando, nas versões do `versions.toml`, com healthchecks e atalhos `dev up`, `dev down` e `dev reset`.
@@ -118,6 +119,8 @@ Os resultados da CI do PR ficam na seção seguinte, preenchida depois da integr
 
 - Resultado da CI do PR e da `main` (preencher depois da integração).
 - Se a regra de proteção da `main` exigir o job `Compose (Windows PowerShell 5.1)` pelo nome, precisa ser retirada da lista de checks obrigatórios.
+- Revisão do avaliador: o teste exigia a ausência da pasta `compose/`, e o `compose/.env` do dev (ignorado pelo git) a mantém depois do pull, o que faria `npm test` falhar na máquina dele (a CI, com checkout limpo, passava). O teste agora confere só os arquivos rastreados. Guia e ADR 0022 dizem para copiar os valores do `compose/.env` para o `.env` da raiz e apagar `compose/`.
+
 ## Histórico
 
 | Data | Atualização |

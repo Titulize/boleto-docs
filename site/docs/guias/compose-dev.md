@@ -82,6 +82,7 @@ As imagens (tag e digest) ficam no bloco gerado do próprio `docker-compose.yml`
 
 O arquivo mantém `name: boleto-dev`. Os containers (`boleto-dev-postgres-1`, `boleto-dev-valkey-1`, `boleto-dev-mailpit-1`) e os volumes (`boleto-dev_postgres_data`, `boleto-dev_valkey_data`) são os mesmos de antes, então os dados continuam. Quem subiu o ambiente com `compose/dev.ps1` ou `compose/dev.sh` e atualizou para este arquivo só precisa rodar, na raiz, `docker compose up -d --wait`. O Compose recria um container se a configuração dele mudou. Os dados ficam nos volumes e não se perdem na recriação. Não rode `down -v` se quiser mantê-los. O volume `boleto-docs_docs_node_modules` (cache do site, projeto antigo `boleto-docs`) fica sem uso e pode ser removido com `docker volume rm boleto-docs_docs_node_modules`.
 
+Quem usava o `compose/.env` (ignorado pelo git, por isso a pasta `compose/` pode continuar na máquina depois do pull): copie os valores trocados (senhas, portas) para o `.env` da raiz (modelo: `.env.example`), apague a pasta `compose/` e rode `docker compose up -d --wait`. Sem essa cópia, valem os padrões do arquivo (`postgres_dev`, `valkey_dev`, portas 5432, 6379 e 8025). Senha diferente da que o volume já guarda não troca a senha do PostgreSQL existente: use a mesma senha ou `docker compose down -v`.
 ## Problemas conhecidos
 
 - **Porta ocupada** (por exemplo, um PostgreSQL instalado na máquina): o `up` falha com `port is already allocated` ou `address already in use`. Defina outra porta no `.env` (`POSTGRES_PORT=5433`) e rode o `up` de novo.

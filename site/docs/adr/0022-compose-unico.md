@@ -31,6 +31,7 @@ Continuam valendo do ADR 0020: portas só em `127.0.0.1`, Valkey com senha, volu
 - O bloco de imagens é texto gerado dentro de um arquivo escrito à mão. Editar o bloco é erro pego pela CI. O Compose só lê as âncoras, então `docker compose config` mostra as imagens já resolvidas.
 - `down -v` apaga os dados sem perguntar. Quem quiser manter os dados usa `down`.
 - O `.platform/versions.env` deixa de ser lido pelo Compose. Continua existindo para o bootstrap.
+- O `compose/.env` do dev é ignorado pelo git e continua na máquina depois do pull. Ele deixa de valer. Quem trocou senhas ou portas copia os valores para o `.env` da raiz e apaga a pasta `compose/`. O teste `scripts/compose.test.mjs` confere a ausência dos arquivos rastreados, não da pasta, para não falhar nessa máquina.
 - O volume `docs_node_modules` passa do projeto `boleto-docs` para o `boleto-dev` (`boleto-dev_docs_node_modules`). É só cache de `npm ci`, refeito na primeira subida do site. O volume antigo (`boleto-docs_docs_node_modules`) fica órfão e pode ser removido com `docker volume rm`.
 - O site passa a publicar a porta `3000` só em `127.0.0.1` (antes, em todas as interfaces), como as demais portas. A porta se troca com `DOCS_PORT`.
 - Serviço de profile só é parado quando o profile está ativo. Medido: com o site no ar, `docker compose down -v` sem `--profile docs` derruba a infraestrutura, mas deixa o container `docs` e o volume `docs_node_modules`. Para parar tudo, inclusive o site, use `docker compose --profile docs down` (ou `down -v`). O guia traz essa regra.

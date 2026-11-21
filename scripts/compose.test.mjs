@@ -37,8 +37,17 @@ const infra = () => services().filter((s) => !/^ {4}profiles:/m.test(s.text));
 test('o compose usa o projeto boleto-dev (os volumes do dev continuam os mesmos)', () => {
   assert.match(compose, /^name: boleto-dev\s*$/m);
 });
-test('só existe o compose da raiz (nada de compose/ nem scripts de atalho)', () => {
-  assert.ok(!existsSync(resolve(root, 'compose')), 'a pasta compose/ foi removida (ADR 0022)');
+test('só existe o compose da raiz (arquivos rastreados de compose/ foram removidos)', () => {
+  // Não testa a pasta: um compose/.env do dev (ignorado pelo git) pode continuar nela (ADR 0022).
+  for (const p of [
+    'compose/docker-compose.yml',
+    'compose/.env.example',
+    'compose/dev.ps1',
+    'compose/dev.sh',
+    'compose/tests/verify.ps1',
+    'compose/tests/verify.sh',
+  ])
+    assert.ok(!existsSync(resolve(root, p)), `${p} foi removido (ADR 0022)`);
 });
 test('postgres, valkey e mailpit sobem sem profile; o site fica no profile docs', () => {
   assert.deepEqual(
