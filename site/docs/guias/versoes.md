@@ -26,7 +26,7 @@ O formato do `versions.toml` é próprio porque o Gradle rejeita chaves desconhe
 
 | Repositório (alvo) | Arquivos gerados |
 |---|---|
-| `boleto-backend` (`backend`) | `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties` (com checksum), `mise.toml` (Java), `.platform/versions.env`, bloco de `ARG` no `Dockerfile` |
+| `boleto-backend` (`backend`) | `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties` (com checksum), `.node-version`, `mise.toml` (Java e Node, o Node para o commitlint), `.platform/versions.env`, bloco de `ARG` no `Dockerfile` |
 | `boleto-frontend` (`frontend`) | `.node-version`, `mise.toml` (Node), versões dos pacotes no `package.json`, `.platform/versions.env`, bloco de `ARG` no `Dockerfile` |
 | `boleto-migrations` (`migrations`) | `.platform/versions.env`, `.platform/flyway-jars.lock` (JARs do Flyway com sha256), `.node-version`, `mise.toml` (Node, para o commitlint), bloco de `ARG` (imagens, Flyway e Squawk) no `Dockerfile`, bloco de imagens (`x-images`, só o PostgreSQL) no `compose.test.yml` |
 | `boleto-docs` (`docs`) | `.platform/versions.env` (usado pelo [bootstrap](./ambiente-do-dev.md)), `mise.toml` (Node), bloco de `ARG` em `docker/docs.Dockerfile`, bloco de imagens (`x-images`) no `docker-compose.yml` do [Compose de desenvolvimento](./compose-dev.md), versões em `site/package.json` |
