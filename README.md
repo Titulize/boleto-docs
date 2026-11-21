@@ -13,7 +13,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit, o site no profile `docs` e as migrações no profile `migrations`) | `docker-compose.yml` | pronto |
 | Flyway por JAR e Squawk nas versões centrais (alvo `migrations`, tag `v0.4.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
 | Node e google-java-format no alvo `backend` da sincronização (tag `v0.5.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
-| Serviço `backend` no Compose (profile `backend`, API Spring Boot do repositório `boleto-backend`) | `docker-compose.yml`; guia em `site/docs/guias/compose-dev.md` | pronto (Task 7, falta integrar o PR) |
+| Serviço `backend` no Compose (profile `backend`, API Spring Boot do repositório `boleto-backend`) | `docker-compose.yml`; guia em `site/docs/guias/compose-dev.md` | pronto (Task 7) |
 | Schema do banco, imagem de migração e testes de isolamento por tenant | repositório `boleto-migrations` (privado); guia em `site/docs/guias/migracoes.md` e modelo em `site/docs/arquitetura/modelo-de-dados.md` | pronto (Task 6, V1) |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
