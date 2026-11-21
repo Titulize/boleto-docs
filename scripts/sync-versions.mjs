@@ -61,11 +61,11 @@ export const TARGETS = {
   },
   backend: {
     images: ['amazonlinux', 'corretto_jdk', 'corretto_headless', 'postgres', 'valkey'],
-    vars: ['java', 'gradle'],
-    miseTools: ['java'],
+    vars: ['java', 'gradle', 'node'],
+    miseTools: ['java', 'node'],
     packages: null,
     dockerArgs: ['CORRETTO_JDK_IMAGE', 'CORRETTO_HEADLESS_IMAGE'],
-    files: ['catalog', 'wrapper'],
+    files: ['catalog', 'wrapper', 'node-version'],
     defaults: { dockerfiles: ['Dockerfile'], packageJson: [] },
   },
   frontend: {

@@ -9,7 +9,7 @@
 # Formato próprio (não é um catálogo do Gradle). Os arquivos derivados
 # (libs.versions.toml, build args do Docker, pins do frontend) são gerados pela sincronização.
 #
-# Pesquisado em 2026-11-21. Fontes: endoflife.date, Maven Central, npm, GitHub Releases, registries de imagem.
+# Pesquisado em 2026-11-21. Fontes: endoflife.date, Maven Central, npm, GitHub Releases, registries de imagem. google-java-format conferido no Maven Central em 2026-11-21 (maven-metadata.xml).
 
 schema_version = 1
 
@@ -151,6 +151,8 @@ bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.87" }
 
 [backend.tools]
 jacoco = { version = "0.8.16" }
+# Formatador do Spotless. 2.0.0 é a última release no Maven Central (2026-10-30) e lê Java 25.
+google_java_format = { version = "2.0.0" }
 
 # ---------------------------------------------------------------------------
 # Frontend. Angular 22 exige TypeScript >=6.0 <6.1 e Node ^22.22.3 || ^24.15.0 || ^26.0.0.

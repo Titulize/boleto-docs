@@ -108,8 +108,9 @@ test('init do backend gera catálogo, wrapper, env e bloco do Dockerfile', async
   assert.match(df, /FROM \$\{AL2023_IMAGE\}\nRUN echo ola\n$/);
 
   const mise = readFileSync(join(root, 'mise.toml'), 'utf8');
-  assert.match(mise, /\[tools\]\njava = "corretto-25\.0\.5\.1\.2"\n$/);
-  assert.ok(!mise.includes('node'), 'o backend não pede Node');
+  assert.match(mise, /\[tools\]\njava = "corretto-25\.0\.5\.1\.2"\nnode = "26\.13\.1"\n$/);
+  assert.equal(readFileSync(join(root, '.node-version'), 'utf8'), '26.13.1\n');
+  assert.match(catalog, /google-java-format = "2\.0\.0"/);
 
   const lock = JSON.parse(readFileSync(join(root, '.platform/lock.json'), 'utf8'));
   assert.equal(lock.source.sha256, sha256(realToml));
