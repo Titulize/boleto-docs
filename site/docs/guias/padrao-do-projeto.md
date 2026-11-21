@@ -53,7 +53,7 @@ Rode localmente as mesmas verificações da CI do repositório alterado. No `bol
 | `versions.toml` ou `scripts/` | `npm run validate`, `npm run sync:check`, `npm test` |
 | `bootstrap/bootstrap.sh` | `docker run --rm -v "<repo>:/mnt:ro" koalaman/shellcheck:stable --shell=bash /mnt/bootstrap/bootstrap.sh` |
 | `bootstrap/*.ps1` | verificação de sintaxe (parser do PowerShell) e `bootstrap/tests/path.tests.ps1` no PowerShell 7 e no Windows PowerShell 5.1 |
-| `site/` | `docker compose run --rm --no-deps docs sh -c "npm ci && npm run build"` (links quebrados falham) |
+| `site/` | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` (links quebrados falham) |
 
 Os outros repositórios documentam suas verificações no próprio README.
 
