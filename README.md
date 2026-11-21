@@ -10,7 +10,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Site de documentação (Docusaurus) | `site/` | pronto |
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
-| Docker Compose de desenvolvimento | `compose/` | Task 5 |
+| Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit) | `compose/` | pronto |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
 
@@ -54,6 +54,26 @@ bootstrap/bootstrap.sh doctor      # diagnostica, sem alterar nada
 ```
 
 Veja [Ambiente do desenvolvedor](site/docs/guias/ambiente-do-dev.md) para as opções e os pontos de atenção.
+
+## Compose de desenvolvimento
+
+PostgreSQL, Valkey e Mailpit locais, nas versões do `versions.toml`, com portas só em `127.0.0.1`. Interface do Mailpit em http://localhost:8025.
+
+```powershell
+.\compose\dev.ps1 up            # Windows: sobe e espera todos ficarem saudáveis
+.\compose\dev.ps1 down          # para (os dados continuam)
+.\compose\dev.ps1 reset         # apaga os dados e sobe de novo (pede confirmação; -Yes dispensa)
+.\compose\tests\verify.ps1      # verifica saúde e conexões dos serviços em execução
+```
+
+```bash
+compose/dev.sh up               # Linux e macOS
+compose/dev.sh down
+compose/dev.sh reset            # --yes dispensa a confirmação
+compose/tests/verify.sh
+```
+
+Testes sem Docker: `pwsh -NoProfile -File compose/tests/dev.tests.ps1` (também no `powershell` 5.1) e `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
 
 ## Documentação
 

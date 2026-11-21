@@ -38,6 +38,7 @@ flowchart LR
 | `boleto-migrations` | Todo o schema do banco (tabelas, auditoria do Envers, políticas RLS, roles) |
 | PostgreSQL | Dados transacionais e trilha de auditoria |
 | Valkey | Refresh tokens, blacklist de logout e contadores de rate limit |
+| Mailpit (só desenvolvimento) | Recebe por SMTP os e-mails enviados pelo backend e os mostra numa interface web |
 
 ## Papéis de banco de dados
 
@@ -47,5 +48,5 @@ O backend conecta com uma role sem permissão de DDL e sem `BYPASSRLS`. Só o `b
 
 | Ambiente | PostgreSQL e Valkey | E-mail | Observabilidade |
 |---|---|---|---|
-| Desenvolvimento | Containers no Docker Compose | Mailpit | Grafana LGTM (profile opcional) |
+| Desenvolvimento | Containers no Docker Compose (`compose/` do `boleto-docs`, portas só em `127.0.0.1`, ver [Compose de desenvolvimento](../guias/compose-dev.md)) | Mailpit | Grafana LGTM (profile opcional, Task 11) |
 | AWS (futuro) | RDS ou Aurora Serverless e ElastiCache for Valkey | Amazon SES | CloudWatch e X-Ray |
