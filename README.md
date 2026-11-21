@@ -11,7 +11,8 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
 | Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit, o site no profile `docs` e as migrações no profile `migrations`) | `docker-compose.yml` | pronto |
-| Flyway por JAR e Squawk nas versões centrais (alvo `migrations`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto (Task 6, parte A) |
+| Flyway por JAR e Squawk nas versões centrais (alvo `migrations`, tag `v0.4.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
+| Schema do banco, imagem de migração e testes de isolamento por tenant | repositório `boleto-migrations` (privado); guia em `site/docs/guias/migracoes.md` e modelo em `site/docs/arquitetura/modelo-de-dados.md` | pronto (Task 6, V1) |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
 
@@ -70,7 +71,7 @@ docker compose down -v        # reset: apaga os dados
 
 Credenciais e portas têm valor padrão no `docker-compose.yml`. O `.env` é opcional (modelo em `.env.example`). As imagens ficam no bloco gerado do próprio arquivo, escrito por `npm run sync`. Testes sem Docker: `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
 
-As migrações do banco (repositório `boleto-migrations`, ao lado deste) rodam à parte, no profile `migrations`, e não entram no `up -d --wait`:
+As migrações do banco (repositório `boleto-migrations`, ao lado deste) rodam à parte, no profile `migrations`, e não entram no `up -d --wait` (guia: [Migrações do banco](site/docs/guias/migracoes.md)):
 
 ```bash
 docker compose run --build --rm flyway   # aplica as migrações e sai (código ≠ 0 em qualquer erro)

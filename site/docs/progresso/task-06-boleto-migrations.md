@@ -5,7 +5,7 @@ title: 'Task 06: Repositório boleto-migrations'
 
 # Task 06: Repositório `boleto-migrations` (Flyway)
 
-- **Situação:** Em andamento (parte A, no `boleto-docs`, pronta para o PR)
+- **Situação:** Em andamento. Código, testes e CI dos dois repositórios estão integrados e verdes. Faltam o PR desta documentação (parte C) e três ajustes pequenos no `boleto-migrations` (ver [Pendências](#pendências))
 - **Início:** 2026-11-21
 - **Última atualização:** 2026-11-21
 - **Repositórios:** `boleto-docs`, `boleto-migrations`
@@ -16,59 +16,109 @@ Schema inicial do banco e execução automática das migrações: uma imagem do 
 
 ## Entregue
 
-Parte A, no `boleto-docs`:
+Parte A, no `boleto-docs` (PR [#7](https://github.com/Titulize/boleto-docs/pull/7), squash `b8290f7`, tag `v0.4.0`):
 
-- `versions.toml`: `[tools.flyway]` agora tem `version`, `main_class` e `[tools.flyway.jars]` (24 JARs do Maven Central, cada um com `group`, `artifact`, `version` e `sha256`). Novo `[tools.squawk]` (2.73.0, binário linux-x64 com sha256). O tarball do CLI saiu ([ADR 0024](../adr/0024-flyway-jar-corretto.md)).
+- `versions.toml`: `[tools.flyway]` tem `version`, `main_class` e `[tools.flyway.jars]` (24 JARs do Maven Central, cada um com `group`, `artifact`, `version` e `sha256`). Novo `[tools.squawk]` (2.73.0, binário linux-x64 com sha256). O tarball do CLI saiu ([ADR 0024](../adr/0024-flyway-jar-corretto.md)).
 - `scripts/validate-versions.mjs`: valida os JARs (versão exata, sha256, sem duplicata, classe principal) e rejeita a entrada antiga `url_linux_x64` do Flyway.
-- `scripts/sync-versions.mjs`: o alvo `migrations` recebe Amazon Linux, Corretto headless e PostgreSQL, as variáveis `FLYWAY_VERSION`, `FLYWAY_MAIN_CLASS` e `SQUAWK_*`, o arquivo gerado `.platform/flyway-jars.lock`, `.node-version`, `mise.toml` (Node) e o bloco `x-images` do `compose.test.yml`. `FLYWAY_URL` e `FLYWAY_SHA256` deixaram de existir.
+- `scripts/sync-versions.mjs`: o alvo `migrations` gera `.platform/flyway-jars.lock`, as variáveis `FLYWAY_VERSION`, `FLYWAY_MAIN_CLASS` e `SQUAWK_*`, `.node-version`, `mise.toml` e o bloco `x-images` do `compose.test.yml`. `FLYWAY_URL` e `FLYWAY_SHA256` deixaram de existir.
 - `docker-compose.yml`: serviço `flyway` no profile `migrations`, execução única, depende do PostgreSQL saudável. `BOLETO_APP_PASSWORD` entrou no `.env.example`. Os comandos padrão (`up -d --wait`, `down`, `down -v`) seguem subindo só a infraestrutura.
-- ADRs [0023](../adr/0023-primeira-main-boleto-migrations.md) a [0029](../adr/0029-permissao-por-tela.md): primeira `main`, Flyway por JAR, modelo de dados da V1, roles e RLS, migração como primeiro passo do deploy, lint de SQL e testes, permissão por tela.
-- Documentação: [padrão do projeto](../guias/padrao-do-projeto.md) (regra expand/contract e exceção da primeira `main`), [versões](../guias/versoes.md), [Compose de desenvolvimento](../guias/compose-dev.md), [containers](../arquitetura/containers.md), [multi-tenancy e auditoria](../arquitetura/multitenancy-e-auditoria.md) e README.
+- ADRs [0023](../adr/0023-primeira-main-boleto-migrations.md) a [0029](../adr/0029-permissao-por-tela.md) e a regra expand/contract no [padrão do projeto](../guias/padrao-do-projeto.md).
+
+Parte B, no `boleto-migrations` (PR [#1](https://github.com/Titulize/boleto-migrations/pull/1), squash `9673a5a`; commit inicial `a72f995` direto na `main`, exceção do [ADR 0023](../adr/0023-primeira-main-boleto-migrations.md)):
+
+- Imagem de migração: `Dockerfile` com estágios `baixar` (24 JARs conferidos contra `.platform/flyway-jars.lock`), `lint` (Squawk) e final (Corretto headless, usuário 10001). `docker/entrypoint.sh` executa `migrate`, `validate` e `info` e sai com código diferente de zero em qualquer erro.
+- `sql/V1__schema_inicial.sql`: empresa gestora, usuários, perfis, telas e permissões por tela, tokens de convite e recuperação, `revinfo` e tabelas `_aud`, três roles (`boleto_owner`, `boleto_app`, `boleto_funcoes`), funções de resolução de tenant e RLS forçado por `tenant_id`. Detalhes em [Modelo de dados](../arquitetura/modelo-de-dados.md).
+- `sql/afterMigrate.sql`: senha da `boleto_app` e CNPJ da Titulize (valor de teste, configurável) a cada execução.
+- Testes: `compose.test.yml` com PostgreSQL 18, casos SQL `tests/sql/01` a `08b` e `tests/admin/09` (executados como `boleto_app`), casos negativos da imagem em `tests/negativos.sh`.
+- CI: `Conventional Commits` (só em PR) e o job do banco (sync, ShellCheck, lint, isolamento, negativos), com cache das imagens ([ADR 0021](../adr/0021-cache-imagens-ci.md)). Actions fixadas por SHA.
+- README com conteúdo, uso, variáveis, contrato da imagem, regra expand/contract, como acrescentar uma tela e o aviso do CNPJ de teste.
+
+Parte C, no `boleto-docs` (esta documentação):
+
+- Este registro e o índice; [ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md); nova página [Modelo de dados](../arquitetura/modelo-de-dados.md); novo guia [Migrações do banco](../guias/migracoes.md); ajustes em `containers.md`, `multitenancy-e-auditoria.md`, `compose-dev.md`, `versoes.md`, `padrao-do-projeto.md` (verificações do `boleto-migrations` e migração de dados em tabela de tenant), nos ADRs 0026 e 0028, no README e no comentário do serviço `flyway` do `docker-compose.yml` (agora cita `run --build --rm flyway`).
 
 ## Verificação
 
-Parte A, no worktree `boleto-docs/.worktrees/task-06-versions` (Windows, Docker 29.8.0).
+Parte A, no worktree do `boleto-docs` (Windows, Docker 29.8.0):
 
 | O quê | Como | Resultado |
 |---|---|---|
-| Flyway por JAR sobre Corretto headless | Container descartável com a imagem `25.0.5-al2023-headless`, PostgreSQL 18.7: `info`, `migrate` com callback `afterMigrate` e placeholders, `validate` | `info` listou o schema vazio, `migrate` aplicou a migração e executou o callback, `validate` saiu 0 |
-| sha256 dos 24 JARs | Cada arquivo baixado comparado com o `.sha1` ou `.sha256` do Maven Central | todos conferem |
-| sha256 do Squawk | Download de `squawk-linux-x64` da v2.73.0 e `Get-FileHash` | confere com o valor publicado no release |
-| `npm run validate`, `npm run sync:check`, `npm test` | na raiz do worktree | `versions.toml` válido, versões em dia, 42 testes passaram (32 antes; novos: validação dos JARs, `flyway-jars.lock`, bloco `x-images` do `compose.test.yml`, serviço `flyway`) |
-| Compose | `docker compose config --quiet` e `docker compose --profile migrations config --quiet` (sem a pasta `../boleto-migrations`) | os dois saíram 0 |
-| Comandos padrão não executam o `flyway` | `docker compose up -d --wait` | subiram só PostgreSQL, Valkey e Mailpit |
-| Tamanho dos 24 JARs | `HEAD` de cada URL do Maven Central, soma de `Content-Length` | 6.275.190 bytes |
-| Build do site | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` | saiu 0, sem links quebrados |
-| CNPJ de teste fora do repositório público | `git grep -n` do número no `boleto-docs` | sem resultado |
-| `bootstrap/` intacto | `git diff --stat origin/main -- bootstrap` | sem mudanças (sem ShellCheck nem testes do PowerShell) |
+| Flyway por JAR sobre Corretto headless | Container descartável (`25.0.5-al2023-headless`), PostgreSQL 18.7: `info`, `migrate` com callback `afterMigrate` e placeholders, `validate` | `info` listou o schema vazio, `migrate` aplicou e executou o callback, `validate` saiu 0 |
+| sha256 dos 24 JARs e do Squawk | Cada arquivo baixado contra o `.sha1` ou `.sha256` publicado | todos conferem |
+| `npm run validate`, `npm run sync:check`, `npm test` | raiz do worktree | válido, em dia, 42 testes passaram |
+| Compose | `docker compose config --quiet` e `--profile migrations config --quiet` | os dois saíram 0 |
+| Build do site | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` | saiu 0 |
 
-Não verificado nesta parte: a imagem do `boleto-migrations` (parte B), o `docker compose run --build --rm flyway` de ponta a ponta (depende do repositório `boleto-migrations`, ainda vazio) e a CI do PR.
+Parte B, no worktree do `boleto-migrations`, registro do commit `9673a5a`:
+
+| O quê | Como | Resultado |
+|---|---|---|
+| Versões | `node .platform/sync-versions.mjs check --remote` | em dia (`v0.4.0`) |
+| Shell | ShellCheck (`koalaman/shellcheck:stable`) nos `.sh` | sem avisos |
+| Lint | `docker build --target lint .` e o mesmo com `tests/fixtures/lint-negativo` | o primeiro passou, o segundo falhou (esperado) |
+| Imagem | `docker build -t boleto-migrations:dev .` | passou |
+| Isolamento | `docker compose -f compose.test.yml run --build --rm tests` | `preparar`, `admin/09` e `sql/01` a `08b` passaram como `boleto_app` |
+| Teste não vazio | política permissiva injetada em `usuario` | `04_isolamento_leitura` falhou |
+| Casos negativos | `bash tests/negativos.sh` | migração alterada, SQL inválido, senha errada, banco inacessível, variáveis ausentes, `validate` com pendência, lint e CNPJ configurável saíram como esperado |
+| Demonstração | projeto `boleto-t6`, porta 15432 | `migrate` aplicou a V1, `psql` mostrou o schema |
+
+Parte C, no worktree `boleto-docs/.worktrees/task-06-docs`:
+
+| O quê | Como | Resultado |
+|---|---|---|
+| Migração no Compose do `boleto-docs`, de ponta a ponta | projeto `boleto-t6c`, porta 15433: `docker compose -p boleto-t6c up -d --wait postgres`, `docker compose -p boleto-t6c run --build --rm flyway`, segunda execução, `down -v` | a V1 foi aplicada (`Schema version: 1`), saída 0; a segunda execução disse "up to date" e saiu 0; o PostgreSQL continuou de pé depois do `run`. O `boleto-dev` do desenvolvedor não foi tocado |
+| Comandos do guia de migrações | `\dn`, `\du`, `flyway_schema_history` como `postgres`; `boleto_app` com e sem `set_config('app.tenant_id', ...)` | `boleto_owner` dona do schema; com o tenant da Titulize a `boleto_app` viu 1 empresa, sem o tenant viu 0 |
+| Mutação do teste de escrita | cópia temporária do `boleto-migrations` com `create policy ... for all to boleto_app using (true) with check (true)` em `usuario`; depois `05_isolamento_escrita` sozinho | `03_falha_fechada` já falhou na suíte inteira; o `05` sozinho falhou com "esperava erro, mas executou: insert into boleto.usuario ..." (tenant B). A cópia foi apagada |
+
+As verificações locais restantes (`commitlint`, `validate`, `sync:check`, `npm test`, `docker compose config`, build do site, `git grep` do CNPJ de teste e conferência de `bootstrap/`) estão no registro do commit desta parte.
+
+### Workflows
+
+| Repositório | Workflow | Evento | Run | Resultado |
+|---|---|---|---|---|
+| `boleto-docs` | CI (5 jobs: validar e testes, bootstrap Linux, bootstrap Windows PowerShell 5.1, Compose Linux, Conventional Commits) | PR #7 | [44867984531](https://github.com/Titulize/boleto-docs/actions/runs/44867984531) | verde |
+| `boleto-docs` | Documentação (build do site; publicação ignorada no PR) | PR #7 | [44867984570](https://github.com/Titulize/boleto-docs/actions/runs/44867984570) | verde |
+| `boleto-docs` | CI | `main` depois do squash `b8290f7` | [44875700519](https://github.com/Titulize/boleto-docs/actions/runs/44875700519) | verde |
+| `boleto-docs` | Documentação (build e publicação no Pages) | `main` depois do squash `b8290f7` | [44875700415](https://github.com/Titulize/boleto-docs/actions/runs/44875700415) | verde |
+| `boleto-migrations` | CI (`Conventional Commits` 19 s e `Lint, imagem e testes de isolamento` 2 min 17 s) | PR #1 | [44879522723](https://github.com/Titulize/boleto-migrations/actions/runs/44879522723) | verde |
+| `boleto-migrations` | CI | `main` depois do squash `9673a5a` | [44879738999](https://github.com/Titulize/boleto-migrations/actions/runs/44879738999) | verde |
+
+A CI e a Documentação do PR desta parte C ainda não rodaram (o PR é aberto depois deste registro). Quando rodarem, as linhas entram aqui.
 
 ## Falhas e correções
 
-- **Primeiro build do site da revisão falhou** com ENOENT em `/app/build/__server/server.bundle.js` (`build/` antigo no bind mount). A segunda execução do mesmo comando passou, sem mudar arquivos.
-- **Achado da revisão: `up --exit-code-from` pararia o PostgreSQL.** O comando documentado primeiro implicava `--abort-on-container-exit`. Trocado por `docker compose run --build --rm flyway` em README, `docker-compose.yml`, guia do Compose e ADR 0027.
-- **A imagem Corretto headless não põe `java` no `PATH`.** O primeiro teste do spike falhou com `java: command not found`. O JVM fica em `$JAVA_HOME/bin/java`. O entrypoint do `boleto-migrations` chama esse caminho.
-- **Montar a pasta de JARs em `/lib` quebrou o container** (`No such file or directory` ao executar o `java`), porque `/lib` é um link para `/usr/lib` no Amazon Linux 2023. Os JARs ficam em `/flyway/lib`.
-- **A lista mínima de JARs precisou de mais dois módulos.** Sem `flyway-command-mcp` e `flyway-command-test-connection`, a classe principal falhou com `NoClassDefFoundError: org/flywaydb/mcp/McpConfigurationLoader`. Os dois entraram na lista.
-- **Variáveis do shell herdadas de uma demonstração anterior** (`COMPOSE_PROJECT_NAME=boleto-demo-uni` e portas `2xxxx`) fizeram o `docker compose up -d --wait` da verificação subir o projeto `boleto-demo-uni`, e não o `boleto-dev`. O `boleto-dev` do desenvolvedor não foi tocado. Os containers e volumes do `boleto-demo-uni` criados nessa execução foram removidos com `down -v`.
-- **Arquivo `versions.toml` com linhas de log.** O gerador da tabela de JARs gravou as mensagens de conferência na saída do arquivo, e o `npm run validate` acusou o TOML inválido. As linhas foram removidas antes de qualquer commit.
+- **Nenhum workflow falhou** nos dois repositórios neste Task, conforme `gh run list` nos dois repositórios (os workflows listados acima, todos verdes na primeira execução).
+- **Primeiro build do site da revisão da parte A falhou** com ENOENT em `/app/build/__server/server.bundle.js` (`build/` antigo no bind mount). A segunda execução do mesmo comando passou, sem mudar arquivos.
+- **`up --exit-code-from` pararia o PostgreSQL** (achado da parte A). O comando documentado implicava `--abort-on-container-exit`. Trocado por `docker compose run --build --rm flyway`. O comentário do serviço no `docker-compose.yml` ainda citava `up flyway`, e a revisão da parte A apontou isso. Corrigido na parte C.
+- **A imagem Corretto headless não põe `java` no `PATH`.** O primeiro teste do spike falhou com `java: command not found`. O entrypoint chama `$JAVA_HOME/bin/java`.
+- **Montar os JARs em `/lib` quebrou o container**, porque `/lib` é um link para `/usr/lib` no Amazon Linux 2023. Os JARs ficam em `/flyway/lib`.
+- **A lista mínima de JARs precisou de mais dois módulos** (`flyway-command-mcp` e `flyway-command-test-connection`), por causa de `NoClassDefFoundError: org/flywaydb/mcp/McpConfigurationLoader`.
+- **Variáveis do shell herdadas de uma demonstração anterior** (`COMPOSE_PROJECT_NAME` e portas `2xxxx`) fizeram o `docker compose up -d --wait` da verificação subir o projeto `boleto-demo-uni`, e não o `boleto-dev`. O `boleto-dev` não foi tocado, e os recursos criados foram removidos.
+- **`versions.toml` com linhas de log.** O gerador da tabela de JARs gravou mensagens no arquivo, e o `npm run validate` acusou TOML inválido. As linhas saíram antes de qualquer commit.
+- **Falhas locais da parte B não foram registradas.** O registro do commit `9673a5a` diz que todas as verificações passaram, sem listar tentativas anteriores. Se houve falha intermediária, este registro não a tem.
 
 ## Decisões e desvios do plano
 
-- Decisões novas nos ADRs 0023 a 0029.
-- O plano chamava a branch de `feat/migrations-flyway-jar`. A branch usada é `feat/task-06-flyway-jar`, no worktree `task-06-versions`.
+- Decisões novas nos [ADR 0023](../adr/0023-primeira-main-boleto-migrations.md) a [0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md). O 0030 registra três pontos que a implementação mostrou: política mínima da dona em `empresa_gestora` (para trocar o CNPJ), migração de dados que define o tenant, e `app.tenant_origem_id` como contrato do backend.
+- As branches usadas foram `feat/task-06-flyway-jar`, `feat/task-06-schema-inicial` e `docs/task-06-migrations`, no lugar dos nomes do plano. As exceções do lint ficaram por arquivo (`-- squawk-ignore-file`), e não no `.squawk.toml`.
+- O teste de isolamento roda com `docker compose run --build --rm tests`, não com `up --abort-on-container-exit`: o serviço `flyway` termina antes e derrubaria o `tests`.
+- Não houve nova tag na parte C: o `versions.toml` não mudou. O `boleto-migrations` segue na `v0.4.0`.
+- Não existe página de inventário de dados pessoais; a lista dos campos pessoais da V1 está em [Modelo de dados](../arquitetura/modelo-de-dados.md#dados-pessoais-lgpd) e o Task 15 a incorpora.
 
 ## Pendências
 
-- Parte B: executar `docker compose run --build --rm flyway` de ponta a ponta com outro nome de projeto e outras portas, registrar o resultado e conferir que o PostgreSQL continua de pé; conferir também os nomes de funções, variáveis de sessão e roles citados em `containers.md` e `multitenancy-e-auditoria.md` contra a V1 real.
-- Parte B: repositório `boleto-migrations` (imagem, schema `V1`, roles, RLS, testes de isolamento, lint de SQL, CI e README).
-- Tag do `boleto-docs` depois do merge da parte A, que o `boleto-migrations` fixa.
-- Parte C: este registro completo, `modelo-de-dados.md`, guia de migrações e `tasks.md`.
-- A publicação da imagem multi-arquitetura fica para o Task 14.
+- PR desta parte C: rodar `commitlint`, abrir o PR, acompanhar a CI e a Documentação, integrar por squash e acompanhar os dois workflows da `main`. Depois disso este registro passa a "Concluída".
+- No `boleto-migrations` (PR pequeno, achados da revisão da parte B, todos sem efeito no isolamento): (1) o README ainda não avisa que migração de dados como `boleto_owner` afeta 0 linhas sob RLS forçado; (2) o README ainda não exige `sslmode=verify-full` na `FLYWAY_URL` de produção; (3) `tests/negativos.sh` aceita qualquer falha nos casos de lint, de rede e de `validate`, e deveria exigir a regra do Squawk (por exemplo `ban-drop-column`) e a mensagem do Flyway. O comentário no topo do `compose.test.yml` também ainda cita `up --abort-on-container-exit`, que não funciona (usar `run`).
+- Task 8: definir `app.tenant_id` e `app.tenant_origem_id` só a partir do JWT validado; confirmar `revinfo_seq` (incremento 50) com `ddl-auto=validate`; decidir a auditoria do catálogo `tela` (nome, menu e ordem).
+- Task 14: publicar a imagem de migração (multi-arquitetura, x64 e Graviton) e encadear migração, backend e frontend no pipeline.
+- Frontend (Task 12 em diante): a barra de administração para assumir empresa. O banco já tem o suporte.
+- A CI do `boleto-migrations` roda só em x64, e o build multi-arquitetura não foi verificado.
+- Resíduo local: o diretório vazio `boleto-docs/.worktrees/task-06-versions` ficou preso por outro processo (o git já o desregistrou). Apagar quando o processo soltar.
 
 ## Histórico
 
 | Data | Atualização |
 |---|---|
-| 2026-11-21 | Parte A: JARs do Flyway e Squawk no `versions.toml`, sincronização, serviço `flyway` no Compose e ADRs 0023 a 0029 |
+| 2026-11-21 | Parte A: JARs do Flyway e Squawk no `versions.toml`, sincronização, serviço `flyway` no Compose e ADRs 0023 a 0029. Tag `v0.4.0` |
+| 2026-11-21 | Parte B: `boleto-migrations` com imagem, V1, roles, RLS, testes de isolamento, lint e CI (PR #1) |
+| 2026-11-21 | Parte C: documentação final, ADR 0030, modelo de dados e guia de migrações |

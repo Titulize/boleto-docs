@@ -40,3 +40,4 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0027](./0027-migracao-primeiro-passo.md) | A migração é o primeiro passo do deploy | Aceito |
 | [0028](./0028-lint-sql-e-testes.md) | Lint de SQL com Squawk e testes em PostgreSQL real | Aceito |
 | [0029](./0029-permissao-por-tela.md) | Permissão por tela | Aceito |
+| [0030](./0030-manutencao-de-dados-e-origem-do-tenant.md) | Manutenção de dados pela dona das tabelas e origem do tenant | Aceito |

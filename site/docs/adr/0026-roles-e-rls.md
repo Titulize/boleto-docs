@@ -24,7 +24,7 @@ O [ADR 0008](./0008-multitenancy.md) define o isolamento por `tenant_id` com Row
 ## Consequências
 
 - Esquecer o `SET ROLE` numa migração nova é pego pelo teste de catálogo.
-- O dono das tabelas também passa pelo RLS. Uma migração que precise mexer em dados de um tenant define o tenant antes (como o `afterMigrate` faz para o CNPJ da Titulize).
+- O dono das tabelas também passa pelo RLS. Uma migração que precise mexer em dados de um tenant define o tenant antes. O `afterMigrate` faz isso para o CNPJ da Titulize, com uma política só para a dona em `empresa_gestora`. Sem o tenant definido, o `UPDATE` afeta 0 linhas sem erro ([ADR 0030](./0030-manutencao-de-dados-e-origem-do-tenant.md)).
 - As funções de resolução enxergam todos os tenants, mas só nas colunas liberadas e com o retorno limitado a `tenant_id`.
 - A senha de dev da `boleto_app` vive só no Compose (valor de desenvolvimento). Em produção vem do cofre de segredos da infraestrutura.
 

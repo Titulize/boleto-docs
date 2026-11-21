@@ -42,7 +42,7 @@ flowchart LR
 
 ## Ordem de execução
 
-A migração é o primeiro passo do deploy ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)): a imagem do `boleto-migrations` roda uma vez, valida os checksums, aplica as migrações pendentes e sai com código diferente de zero em qualquer erro. Só se ela terminar com 0, o backend é publicado, e só depois dele o frontend. Na AWS (fora desta fase), a migração roda na VPC, por exemplo como tarefa do ECS Fargate, com a conexão em variáveis de ambiente. Em desenvolvimento, o serviço `flyway` do Compose (profile `migrations`) faz o mesmo papel como comando à parte ([Compose de desenvolvimento](../guias/compose-dev.md)).
+A migração é o primeiro passo do deploy ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)): a imagem do `boleto-migrations` roda uma vez, valida os checksums, aplica as migrações pendentes e sai com código diferente de zero em qualquer erro. Só se ela terminar com 0, o backend é publicado, e só depois dele o frontend. Na AWS (fora desta fase), a migração roda na VPC, por exemplo como tarefa do ECS Fargate, com a conexão em variáveis de ambiente. Em desenvolvimento, o serviço `flyway` do Compose (profile `migrations`) faz o mesmo papel como comando à parte: `docker compose run --build --rm flyway` ([Compose de desenvolvimento](../guias/compose-dev.md) e [Migrações do banco](../guias/migracoes.md)). A publicação da imagem num registro, multi-arquitetura (x64 e Graviton), e o encadeamento no pipeline ficam para o Task 14.
 
 ## Papéis de banco de dados
 
