@@ -3,9 +3,9 @@ sidebar_position: 7
 title: 'Task 07: Esqueleto do backend'
 ---
 # Task 07: Esqueleto do backend
-- **Situação:** Em andamento (backend e `boleto-docs` integrados com a CI verde; falta só corrigir o README do `boleto-backend`)
+- **Situação:** Concluída
 - **Início:** 2026-11-21
-- **Última atualização:** 2026-11-21
+- **Última atualização:** 2026-11-22
 - **Repositórios:** `boleto-docs`, `boleto-backend`
 ## Objetivo
 Um backend Spring Boot que sobe em contêiner, conecta no PostgreSQL já migrado e responde `/actuator/health` e o Swagger, com os módulos da Fase 1 e as ferramentas de qualidade configurados, sem regra de negócio.
@@ -20,7 +20,7 @@ Parte A, no `boleto-backend` (PR [#1](https://github.com/Titulize/boleto-backend
 - Conexão com o PostgreSQL como `boleto_app`, `ddl-auto=validate`, sem Valkey e sem Flyway; Swagger desligado por padrão ([ADR 0032](../adr/0032-esqueleto-do-backend.md)).
 - `Dockerfile` multi-stage em Amazon Linux 2023 (Corretto), usuário `10001`, JAR em camadas, `HEALTHCHECK`.
 - CI (commitlint, `sync-versions check --remote`, validação do wrapper, Spotless, testes, Jacoco, build da imagem) e README ([ADR 0033](../adr/0033-wrapper-qualidade-e-ci-do-backend.md)).
-Parte B, no `boleto-docs` (branch `feat/task-07-backend-compose-docs`):
+Parte B, no `boleto-docs` (PR [#11](https://github.com/Titulize/boleto-docs/pull/11), squash `fc181ec`):
 - `docker-compose.yml`: serviço `backend` no profile `backend` (build de `BACKEND_CONTEXT`, `depends_on` no `postgres` saudável e no `flyway` concluído, porta `127.0.0.1:${BACKEND_PORT:-8080}`, healthcheck por `curl`). O `flyway` entra também no profile `backend` e usa `MIGRATIONS_CONTEXT`. Sem profile, `up -d --wait` continua subindo só PostgreSQL, Valkey e Mailpit ([ADR 0034](../adr/0034-servico-backend-no-compose.md)).
 - `.env.example` (`BACKEND_PORT`, `BACKEND_CONTEXT`, `MIGRATIONS_CONTEXT`) e `scripts/compose.test.mjs` (teste do `backend` e do `flyway`).
 - ADRs [0031](../adr/0031-primeira-main-boleto-backend.md) a [0034](../adr/0034-servico-backend-no-compose.md); ajuste de consequências no [ADR 0002](../adr/0002-backend-spring-java-gradle.md); [padrão do projeto](../guias/padrao-do-projeto.md) com o link do ADR 0031.
@@ -39,7 +39,10 @@ Confirmada. Spring Boot 4.1.3, Spring Modulith 2.1.3 e springdoc 3.2.0 funcionam
 | Backend, build e testes | `gradlew build` no commit (9 testes, Spotless, Jacoco 80%) e job `Build, testes, Spotless, Jacoco e imagem` da CI | passou |
 | CI do A0 (`boleto-docs` PR #10 e `main`) | runs [44940118654](https://github.com/Titulize/boleto-docs/actions/runs/44940118654) (CI) e [44940118627](https://github.com/Titulize/boleto-docs/actions/runs/44940118627) (Documentação); na `main` 44940262338 (CI) e 44940262247 (Documentação) | todos verdes |
 | CI do backend (PR #1 e `main`) | run [44940609705](https://github.com/Titulize/boleto-backend/actions/runs/44940609705) (jobs `Build, testes, Spotless, Jacoco e imagem` e `Conventional Commits`); `main`: 44941042130 | verdes |
-| CI e build do site deste PR | commitlint, build do site e workflows `CI` e `Documentação` do PR do `boleto-docs` | ver "Pendências" |
+| CI da parte B (`boleto-docs` PR #11 e `main`) | `CI` [44943426982](https://github.com/Titulize/boleto-docs/actions/runs/44943426982) e `Documentação` [44943427066](https://github.com/Titulize/boleto-docs/actions/runs/44943427066); na `main` 44943660199 e 44943660222 | todos verdes |
+| CI do PR #12 (`boleto-docs`) e da `main` | `CI` 44944383863 e `Documentação` 44944383789; na `main` 44944526287 e 44944526290 | todos verdes |
+| Fechamento: README do backend (`boleto-backend` PR #2, squash `f4e68cf`) | commitlint e `sync-versions check --remote` locais; PR: jobs `Build, testes, Spotless, Jacoco e imagem` e `Conventional Commits` (run 44944860558); `main`: run 44945172371 | verdes; o README não cita mais `/swagger-ui` sem `.html` nem `/index.html` |
+| Fechamento: PR do `boleto-docs` (este registro) | localmente: `npm run validate`, `npm run sync:check`, `npm test` (43 passam) e build do site no Docker; commitlint | passou |
 ### Demonstração
 Projeto `boleto-demo`, com `-p` e outras portas (PostgreSQL 25434, backend 18080, Valkey 26380, Mailpit 21026 e 28026), sem parar o `boleto-dev`. O `up` foi construído a partir dos clones `boleto-backend` (`b3e8eb5`) e `boleto-migrations` (`a2328e7`). O `flyway` saiu com código 0 e o backend ficou saudável em cerca de 1 minuto. Respostas reais de `http://localhost:18080`:
 ```text
@@ -95,7 +98,7 @@ Não verificado:
 - Publicação da imagem num registro e smoke com migração e backend na CI (Task 14).
 - O código de saída do `up` da demonstração não foi capturado (o shell da ferramenta devolveu o controle antes do fim). O log mostra todos os serviços saudáveis e o `flyway` terminado, sem erro.
 ## Falhas e correções
-- `/swagger-ui` responde 404: o plano e o README do `boleto-backend` citavam esse caminho. Os guias do `boleto-docs` passaram a usar `/swagger-ui.html`. O README do backend ainda cita `/swagger-ui` (ver Pendências).
+- `/swagger-ui` responde 404: o plano e o README do `boleto-backend` citavam esse caminho. Os guias do `boleto-docs` passaram a usar `/swagger-ui.html`. O README do backend foi corrigido no PR #2 do `boleto-backend` (squash `f4e68cf`).
 - O smoke do `bootRun` no backend não chegou a `UP` por divergência entre a senha local do `boleto-dev` e o padrão do profile `dev` (registro do coder do backend). A demonstração pelo Compose, com a senha gravada pelo `flyway`, passou.
 - Na demonstração, duas tentativas iniciais de `up` ficaram pela metade e deixaram contêineres `Created` do próprio `boleto-demo`, o que causou `container name ... is already in use` na tentativa seguinte. Rodar o `up` de novo resolveu. Foi um efeito da execução pela ferramenta, não do Compose.
 - Nenhuma falha de CI nos workflows do A0 nem do backend.
@@ -104,10 +107,13 @@ Não verificado:
 - [ADR 0032](../adr/0032-esqueleto-do-backend.md), [0033](../adr/0033-wrapper-qualidade-e-ci-do-backend.md) e [0034](../adr/0034-servico-backend-no-compose.md): decisões do plano.
 - A demonstração usou `-p boleto-demo` em vez do `boleto-t07` do plano.
 ## Pendências
-- Ajustar o README do `boleto-backend` (`/swagger-ui` para `/swagger-ui.html`) em outro PR do backend. A tarefa muda para "Concluída" depois disso.
+- Nenhuma pendência do Task 7.
 - Para outros tasks: Valkey, Lettuce e Bucket4j no Task 9; schema nos testes do backend no Task 8; smoke de migração mais backend na CI e verificação de dependências do Gradle no Task 14.
 ## Histórico
 | Data | Atualização |
 |---|---|
 | 2026-11-21 | A0 (tag `v0.5.0`) e esqueleto do `boleto-backend` integrados |
-| 2026-11-21 | Serviço `backend` no Compose, demonstração, ADRs 0031 a 0034 e documentação || 2026-11-21 | PR #11 do `boleto-docs` integrado; pendência restante: README do `boleto-backend` |
+| 2026-11-21 | Serviço `backend` no Compose, demonstração, ADRs 0031 a 0034 e documentação |
+| 2026-11-21 | PR #11 do `boleto-docs` integrado; pendência restante: README do `boleto-backend` |
+| 2026-11-21 | PR #12 do `boleto-docs` integrado (correção do `tasks.md` e do registro) |
+| 2026-11-22 | PR #2 do `boleto-backend` (README, `f4e68cf`) integrado; Task 7 concluída |
