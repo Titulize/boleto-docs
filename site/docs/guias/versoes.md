@@ -69,7 +69,7 @@ No `boleto-docs` os comandos são `npm run sync` e `npm run sync:check`.
 
 O Flyway entra como JAR sobre Amazon Corretto headless ([ADR 0024](../adr/0024-flyway-jar-corretto.md)), não pelo CLI oficial. No `versions.toml`, `[tools.flyway]` tem `version`, `main_class` e a tabela `[tools.flyway.jars]`, com `group`, `artifact`, `version` e `sha256` de cada JAR. As variáveis `FLYWAY_URL` e `FLYWAY_SHA256` deixaram de existir. O alvo `migrations` recebe `FLYWAY_VERSION` e `FLYWAY_MAIN_CLASS`. O Squawk (lint de SQL, [ADR 0028](../adr/0028-lint-sql-e-testes.md)) tem `[tools.squawk]` e as variáveis `SQUAWK_VERSION`, `SQUAWK_URL` e `SQUAWK_SHA256`.
 
-Para atualizar o Flyway: resolva a lista de JARs de novo (`mvn dependency:copy-dependencies` num container descartável, com as exclusões que deixam só o PostgreSQL), confira cada sha256 contra o Maven Central, atualize a tabela e rode `npm run validate`, `npm run sync` e `npm test`. O Renovate não cobre essa tabela.
+O alvo `migrations` foi criado na tag `v0.4.0`, que o `boleto-migrations` fixa (`init --target migrations --tag v0.4.0`). Para atualizar o Flyway: resolva a lista de JARs de novo (`mvn dependency:copy-dependencies` num container descartável, com as exclusões que deixam só o PostgreSQL), confira cada sha256 contra o Maven Central, atualize a tabela e rode `npm run validate`, `npm run sync` e `npm test`. O Renovate não cobre essa tabela.
 
 ## Atualizando uma versão
 

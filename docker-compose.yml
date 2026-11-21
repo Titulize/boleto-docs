@@ -75,8 +75,10 @@ services:
       retries: 20
       start_period: 5s
   # Migrações do banco (boleto-migrations): executa uma vez e sai. Fica no profile migrations para
-  # que `docker compose up -d --wait` suba só a infraestrutura. `docker compose up flyway` ativa o
-  # profile e sobe o postgres antes. Em produção a mesma imagem é o primeiro passo do deploy (ADR 0027).
+  # que `docker compose up -d --wait` suba só a infraestrutura. O comando é
+  # `docker compose run --build --rm flyway`: ele ativa o profile e sobe o postgres antes. Não use
+  # `up --exit-code-from flyway`: implica --abort-on-container-exit e para o postgres no fim.
+  # Em produção a mesma imagem é o primeiro passo do deploy (ADR 0027).
   flyway:
     profiles: [migrations]
     build:

@@ -37,6 +37,7 @@ O `boleto-docs` é público: nunca colocar segredos, nomes de clientes ou dados 
 - Todo o schema pertence ao `boleto-migrations`. Ninguém altera o banco por outro caminho.
 - **Expand/contract.** Cada migração precisa ser compatível com a versão anterior do backend, porque no deploy o backend antigo ainda roda sobre o schema novo. Acrescentar é permitido (tabela, coluna anulável ou com valor padrão, índice). Remover ou renomear coluna, ou tornar uma coluna `NOT NULL` sem valor padrão, são duas migrações separadas por um deploy do backend: primeiro o backend deixa de usar a coluna, depois a migração a remove. O lint de SQL bloqueia o que quebra a regra ([ADR 0027](../adr/0027-migracao-primeiro-passo.md) e [ADR 0028](../adr/0028-lint-sql-e-testes.md)).
 - **Migração aplicada não se edita.** O Flyway confere o checksum e falha. Para corrigir, crie uma migração nova.
+- **Dados de tenant.** A dona das tabelas também passa pelo RLS forçado: uma migração de dados que não defina `app.tenant_id` afeta 0 linhas sem erro ([ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md), [guia de migrações](./migracoes.md)).
 - **Primeira `main` de repositório vazio.** É a única exceção à regra de branch e PR: o commit inicial, sem código nem workflow, vai direto para a `main` ([ADR 0023](../adr/0023-primeira-main-boleto-migrations.md)).
 
 ## Versões
@@ -61,6 +62,15 @@ Rode localmente as mesmas verificações da CI do repositório alterado. No `bol
 | `bootstrap/bootstrap.sh` | `docker run --rm -v "<repo>:/mnt:ro" koalaman/shellcheck:stable --shell=bash /mnt/bootstrap/bootstrap.sh` |
 | `bootstrap/*.ps1` | verificação de sintaxe (parser do PowerShell) e `bootstrap/tests/path.tests.ps1` no PowerShell 7 e no Windows PowerShell 5.1 |
 | `site/` | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` (links quebrados falham) |
+
+No `boleto-migrations` (arquivos `.sh` pelo Git Bash no Windows):
+
+| Mudou | Rode |
+|---|---|
+| qualquer coisa (mensagens de commit) | `npx commitlint --from origin/main --to HEAD` |
+| versões (`.platform/`) | `node .platform/sync-versions.mjs check --remote` |
+| `sql/` | `docker build --target lint .` e `docker compose -p boleto-migrations-test -f compose.test.yml run --build --rm tests` (depois `down -v`) |
+| `Dockerfile`, `docker/` ou `tests/` | os dois acima, `bash tests/negativos.sh` e o ShellCheck dos `.sh` (comando no README do repositório) |
 
 Os outros repositórios documentam suas verificações no próprio README.
 

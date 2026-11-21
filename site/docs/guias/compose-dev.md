@@ -71,6 +71,7 @@ docker compose run --build --rm flyway   # sobe o PostgreSQL se preciso, aplica 
 - Rodar de novo é seguro: sem migração nova, o Flyway não faz nada.
 - `docker compose up -d --wait` não executa o `flyway`. `down -v` apaga o banco, e a próxima migração recria o schema.
 - A senha da role `boleto_app` (a que o backend usa) vem de `BOLETO_APP_PASSWORD` (padrão `boleto_app_dev`) e é aplicada a cada execução.
+- Para ver o schema, criar uma migração e a regra expand/contract, veja [Migrações do banco](./migracoes.md).
 
 ## Conectando
 

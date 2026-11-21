@@ -13,10 +13,10 @@ A regra expand/contract ([ADR 0027](./0027-migracao-primeiro-passo.md)) só vale
 
 ## Decisão
 
-- **Lint com Squawk**, gratuito e de código aberto, em binário pinado no `versions.toml` (`[tools.squawk]`, com sha256). Ele bloqueia justamente o que quebra expand/contract: remover ou renomear coluna, `NOT NULL` sem valor padrão, índice sem `CONCURRENTLY` em tabela existente, entre outras regras. A configuração fica em `.squawk.toml`, e cada exclusão leva um comentário com o motivo. A `V1` só cria objetos novos e tem as exclusões necessárias para isso.
+- **Lint com Squawk**, gratuito e de código aberto, em binário pinado no `versions.toml` (`[tools.squawk]`, com sha256). Ele bloqueia justamente o que quebra expand/contract: remover ou renomear coluna, `NOT NULL` sem valor padrão, índice sem `CONCURRENTLY` em tabela existente, entre outras regras. O `.squawk.toml` mantém todas as regras padrão ligadas. As exceções são por arquivo, com o motivo no próprio arquivo (`-- squawk-ignore-file`, ver [ADR 0030](./0030-manutencao-de-dados-e-origem-do-tenant.md)). A `V1` só cria objetos novos e tem as exceções necessárias para isso.
 - **Lint dentro do Dockerfile:** o estágio `lint` baixa o Squawk, confere o sha256 e roda sobre `sql/V*.sql`. O comando é `docker build --target lint .`, igual na máquina do dev e na CI. Um arquivo com `DROP COLUMN` e `RENAME` precisa ser rejeitado, e há um teste para isso.
 - **Testes em PostgreSQL real:** um `compose.test.yml` sobe PostgreSQL (mesma imagem do `versions.toml`), aplica as migrações com a imagem do Flyway e roda os casos em SQL puro (`psql -v ON_ERROR_STOP=1`) como `boleto_app`. Cada caso falha com `RAISE EXCEPTION`. Cobertura: roles sem privilégios indevidos, RLS ativo e forçado, falha fechada sem tenant, isolamento de leitura e de escrita entre os tenants A e B, funções de resolução, tenant de origem da plataforma, restrições de dados e catálogo de telas.
-- **Casos negativos da imagem:** um script cobre migração alterada depois de aplicada, SQL inválido, banco inacessível, senha errada e pendência sem aplicar. Todos precisam sair com código diferente de zero.
+- **Casos negativos da imagem:** um script cobre migração alterada depois de aplicada, SQL inválido, banco inacessível, senha errada e pendência sem aplicar. Todos precisam sair com código diferente de zero. Variáveis ausentes, aspas na senha e CNPJ inválido também têm caso. O caso do lint usa fixtures com `DROP COLUMN` e renomeação.
 - **CI enxuta:** dois jobs, `commitlint` (só em PR) e `banco`. Só x64. A publicação da imagem multi-arquitetura fica para o Task 14.
 
 ## Consequências
@@ -25,7 +25,7 @@ A regra expand/contract ([ADR 0027](./0027-migracao-primeiro-passo.md)) só vale
 - Os testes provam o isolamento com a role que o backend usa, e não com o superusuário.
 - Atualizar o Squawk exige trocar versão, URL e sha256 no `versions.toml` e uma nova tag do `boleto-docs`.
 - Nenhuma ferramenta nova na máquina do dev: tudo roda em container.
-- Regras do Squawk podem gerar falso positivo. A exclusão é por regra, com justificativa no `.squawk.toml`, revisada no PR.
+- Regras do Squawk podem gerar falso positivo. A exceção é por arquivo e por regra, com justificativa no próprio arquivo, revisada no PR.
 
 ## Alternativas consideradas
 
