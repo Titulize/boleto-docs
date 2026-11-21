@@ -165,7 +165,12 @@ jobs:
         run: |
           tar_imagens="$RUNNER_TEMP/imagens-compose.tar"
           faltando() {
-            while read -r img; do docker image inspect "$img" > /dev/null 2>&1 || return 0; done < "$RUNNER_TEMP/imagens.txt"
+            # Depois do docker load a imagem pode não ter o nome repo:tag@digest, mas o ID dela é o digest.
+            while read -r img; do
+              docker image inspect "$img" > /dev/null 2>&1 \
+                || docker image inspect "sha256:${img##*@sha256:}" > /dev/null 2>&1 \
+                || { echo "faltando no cache: $img"; return 0; }
+            done < "$RUNNER_TEMP/imagens.txt"
             return 1
           }
           if [ "$CACHE_HIT" = "true" ]; then
