@@ -28,14 +28,21 @@ Regras que valem para todos os repositórios e para qualquer pessoa ou agente (K
 | `boleto-docs` (público) | `versions.toml`, sincronização de versões, bootstrap do ambiente, Compose de desenvolvimento, site de documentação e ADRs |
 | `boleto-backend` | API Spring Boot |
 | `boleto-frontend` | SPA Angular |
-| `boleto-migrations` | Todo o schema do banco (Flyway) |
+| `boleto-migrations` | Todo o schema do banco (Flyway), a imagem de migração e os testes de isolamento por tenant |
 
 O `boleto-docs` é público: nunca colocar segredos, nomes de clientes ou dados internos nele.
+
+## Migrações de banco
+
+- Todo o schema pertence ao `boleto-migrations`. Ninguém altera o banco por outro caminho.
+- **Expand/contract.** Cada migração precisa ser compatível com a versão anterior do backend, porque no deploy o backend antigo ainda roda sobre o schema novo. Acrescentar é permitido (tabela, coluna anulável ou com valor padrão, índice). Remover ou renomear coluna, ou tornar uma coluna `NOT NULL` sem valor padrão, são duas migrações separadas por um deploy do backend: primeiro o backend deixa de usar a coluna, depois a migração a remove. O lint de SQL bloqueia o que quebra a regra ([ADR 0027](../adr/0027-migracao-primeiro-passo.md) e [ADR 0028](../adr/0028-lint-sql-e-testes.md)).
+- **Migração aplicada não se edita.** O Flyway confere o checksum e falha. Para corrigir, crie uma migração nova.
+- **Primeira `main` de repositório vazio.** É a única exceção à regra de branch e PR: o commit inicial, sem código nem workflow, vai direto para a `main` ([ADR 0023](../adr/0023-primeira-main-boleto-migrations.md)).
 
 ## Versões
 
 - Mudou uma versão? Altere o `versions.toml`, rode `npm run validate`, `npm run sync` e `npm test`, e crie uma tag `vX.Y.Z` depois do merge.
-- Nunca edite arquivos gerados à mão: `.platform/`, `mise.toml`, `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties`, `.node-version` e os blocos `# >>> platform-versions` dos Dockerfiles.
+- Nunca edite arquivos gerados à mão: `.platform/`, `mise.toml`, `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties`, `.node-version` e os blocos `# >>> platform-versions` dos Dockerfiles e do Compose.
 
 ## Git
 

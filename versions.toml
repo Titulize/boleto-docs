@@ -9,7 +9,7 @@
 # Formato próprio (não é um catálogo do Gradle). Os arquivos derivados
 # (libs.versions.toml, build args do Docker, pins do frontend) são gerados pela sincronização.
 #
-# Pesquisado em 2026-11-20. Fontes: endoflife.date, Maven Central, npm, registries de imagem.
+# Pesquisado em 2026-11-21. Fontes: endoflife.date, Maven Central, npm, GitHub Releases, registries de imagem.
 
 schema_version = 1
 
@@ -49,11 +49,45 @@ url_windows_x64 = "https://github.com/jdx/mise/releases/download/v2026.11.11/mis
 sha256_windows_x64 = "f4fcad8e9ca83ba81b709f2636a860f2b7d8c39af17115944493aab8c4ca6fab"
 
 [tools.flyway]
-# Só existe build linux-x64 (sem linux-arm64). Em Apple Silicon roda via emulação.
+# Flyway pelo JAR sobre Amazon Corretto headless (ADR 0024), no lugar do CLI oficial (~585 MB, só x64).
+# Os JARs vêm do Maven Central, com o sha256 de cada um. Lista mínima para PostgreSQL: o
+# flyway-commandline, o núcleo, os verbos usados (info, migrate, validate, schemas, repair,
+# baseline), o suporte ao PostgreSQL (com o driver) e as dependências de execução.
+# Pesquisado em 2026-11-21 com mvn dependency:copy-dependencies e conferido no Maven Central (sha1/sha256).
 version = "13.13.0"
-url_linux_x64 = "https://download.red-gate.com/maven/release/com/redgate/flyway/flyway-commandline/13.13.0/flyway-commandline-13.13.0-linux-x64.tar.gz"
-sha256_linux_x64 = "0695a34868114c25e44bc4159d461c2173f8bfe383ce987bb9301a8562f7c056"
+main_class = "org.flywaydb.commandline.Main"
 
+[tools.flyway.jars]
+flyway_commandline = { group = "org.flywaydb", artifact = "flyway-commandline", version = "13.13.0", sha256 = "a60a430fd2f63770408d1516daadb8d7a2a3ddfaedc35d2d066bdb0739c13fcf" }
+flyway_core = { group = "org.flywaydb", artifact = "flyway-core", version = "13.13.0", sha256 = "2b86eac1b6b5aeb7bc1f39aa487c5aea1d24b3b433875c3cea95b1d6bc4f9681" }
+flyway_core_utilities = { group = "org.flywaydb", artifact = "flyway-core-utilities", version = "13.13.0", sha256 = "26a657017dd3334cebab01f4c417158cb81d26ef001d0fc3e47426ff4ff9c13d" }
+jackson_dataformat_toml = { group = "tools.jackson.dataformat", artifact = "jackson-dataformat-toml", version = "3.1.8", sha256 = "bba576e99d704c044b9e27c56542f69a3738b308c5b92f3bda0fe6d31118e5a9" }
+jackson_core = { group = "tools.jackson.core", artifact = "jackson-core", version = "3.1.8", sha256 = "762caa009970e8c35527fcc2cfbde50afed0d6a195ee4a7fac22d80fea72c471" }
+jackson_databind = { group = "tools.jackson.core", artifact = "jackson-databind", version = "3.1.8", sha256 = "2e7583c96f3eaf11591a727c75278b25a0f1227d29a7c5e8306f252f441bfb58" }
+jackson_annotations = { group = "com.fasterxml.jackson.core", artifact = "jackson-annotations", version = "2.21", sha256 = "53ca085f4a150f703f49e1aabd935bd03b43e1ea3d55d135438292af22cef56b" }
+flyway_database_postgresql = { group = "org.flywaydb", artifact = "flyway-database-postgresql", version = "13.13.0", sha256 = "4eecce17133eb64f960014ee1c6606182730eba7836ce0c46342a348be32661c" }
+flyway_database_cockroachdb = { group = "org.flywaydb", artifact = "flyway-database-cockroachdb", version = "13.13.0", sha256 = "a4edcb3217c580e83e479e0d85df979399037a6357b387ad4c97347fdc4a3381" }
+flyway_reports = { group = "org.flywaydb", artifact = "flyway-reports", version = "13.13.0", sha256 = "4a10875101d9518245d15f3ef30470dfc25bee031473416b3c66ad5fc1be8326" }
+flyway_nc_core = { group = "org.flywaydb", artifact = "flyway-nc-core", version = "13.13.0", sha256 = "317bf435d1f267a38228fd4a429bb246391b25bca5a957def3810ebcd22d06e7" }
+flyway_nc_scanners = { group = "org.flywaydb", artifact = "flyway-nc-scanners", version = "13.13.0", sha256 = "0ff5d30a3ab72906575fab03a467737d4697ec6da129be2095f612ffb857e207" }
+flyway_nc_callbacks = { group = "org.flywaydb", artifact = "flyway-nc-callbacks", version = "13.13.0", sha256 = "7206a1471b27de95280d387d3adf37caf1ffaafc50e6a21c33365330fd228add" }
+flyway_verb_info = { group = "org.flywaydb", artifact = "flyway-verb-info", version = "13.13.0", sha256 = "bb171ca62f45a51ebe3ef4979a8836855d6367358441d8b453c123b987d8ecf8" }
+flyway_verb_migrate = { group = "org.flywaydb", artifact = "flyway-verb-migrate", version = "13.13.0", sha256 = "4621f24ef4f7a9899fe2b3f9151735b5a63b19dcbb54063ec748d391202c55c3" }
+flyway_verb_baseline = { group = "org.flywaydb", artifact = "flyway-verb-baseline", version = "13.13.0", sha256 = "1fd865cff83feedb29031ced772a740e717c740a22238cc3777256030afc1990" }
+flyway_verb_validate = { group = "org.flywaydb", artifact = "flyway-verb-validate", version = "13.13.0", sha256 = "1b1a64a79b97f4fca75f509c75d308333e06c0fce78ae3cabb18a75dfaa2c171" }
+flyway_verb_schemas = { group = "org.flywaydb", artifact = "flyway-verb-schemas", version = "13.13.0", sha256 = "012ca9137cc3c2970618c54228643f918e831a4f28777d9d2d7b7001541f0a24" }
+flyway_verb_repair = { group = "org.flywaydb", artifact = "flyway-verb-repair", version = "13.13.0", sha256 = "6d939dd381df40e9ecce697eae8a937df3998ef74e14b81998b994e4d287a8b2" }
+postgresql = { group = "org.postgresql", artifact = "postgresql", version = "42.7.14", sha256 = "73914527305a40cce504b0d3d90b23caf565136912d607ae8ae7c5895512332c" }
+checker_qual = { group = "org.checkerframework", artifact = "checker-qual", version = "3.55.1", sha256 = "857658c8bdcbff794949a8d9922f88d63ee3751c203c7cd7d21ea97f9e745288" }
+jansi = { group = "org.jline", artifact = "jansi", version = "4.3.1", sha256 = "d8008963fc2dbf77877d57f162a43b1650b423f4bcb8908df31749cc65406a84" }
+flyway_command_mcp = { group = "org.flywaydb", artifact = "flyway-command-mcp", version = "13.13.0", sha256 = "470100b777abb94eebdd5704249dbb550663c6aca4180b383ee5fa73e1bb47ad" }
+flyway_command_test_connection = { group = "org.flywaydb", artifact = "flyway-command-test-connection", version = "13.13.0", sha256 = "7d55e7e8607ecaf7571e5786350f573bc2149807cc36151277f8bdd7acb7458c" }
+
+[tools.squawk]
+# Lint de SQL das migrações (ADR 0028). Binário Linux x64 (a CI roda só em x64).
+version = "2.73.0"
+url_linux_x64 = "https://github.com/sbdchd/squawk/releases/download/v2.73.0/squawk-linux-x64"
+sha256_linux_x64 = "9ae3747ca5eafa48b4d5c535fc64b61e0735a763164193644aa6436cc97c4274"
 # ---------------------------------------------------------------------------
 # Imagens Docker (digest do índice multi-arquitetura)
 # Imagens oficiais são puxadas pelo espelho público da AWS (public.ecr.aws) para

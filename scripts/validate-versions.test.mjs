@@ -40,8 +40,39 @@ test('falha para versões com faixa', () => {
 
 test('falha para download sem sha256', () => {
   const data = load();
-  delete data.tools.flyway.sha256_linux_x64;
-  assert.ok(validate(data).some((e) => e.includes('tools.flyway')));
+  delete data.tools.squawk.sha256_linux_x64;
+  assert.ok(validate(data).some((e) => e.includes('tools.squawk')));
+});
+
+test('falha para JAR do Flyway sem sha256', () => {
+  const data = load();
+  delete data.tools.flyway.jars.flyway_core.sha256;
+  assert.ok(validate(data).some((e) => e.includes('tools.flyway.jars.flyway_core.sha256')));
+});
+
+test('falha para JAR do Flyway com versão em faixa', () => {
+  const data = load();
+  data.tools.flyway.jars.postgresql.version = '[42.7,)';
+  assert.ok(validate(data).some((e) => e.includes('tools.flyway.jars.postgresql')));
+});
+
+test('falha para JAR do Flyway duplicado', () => {
+  const data = load();
+  data.tools.flyway.jars.flyway_core_copia = { ...data.tools.flyway.jars.flyway_core };
+  assert.ok(validate(data).some((e) => e.includes('JAR duplicado')));
+});
+
+test('falha para a entrada antiga do tarball do Flyway', () => {
+  const data = load();
+  data.tools.flyway.url_linux_x64 = 'https://example.com/flyway.tar.gz';
+  data.tools.flyway.sha256_linux_x64 = 'a'.repeat(64);
+  assert.ok(validate(data).some((e) => e.includes('tools.flyway.url_linux_x64')));
+});
+
+test('falha sem a classe principal do Flyway', () => {
+  const data = load();
+  delete data.tools.flyway.main_class;
+  assert.ok(validate(data).some((e) => e.includes('main_class')));
 });
 
 test('falha para sha256 malformado', () => {

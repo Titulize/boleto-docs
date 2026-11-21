@@ -20,7 +20,7 @@ PostgreSQL, Valkey, Mailpit e Grafana LGTM usam as imagens oficiais, também com
 ## Consequências
 
 - Atualizações de segurança do sistema operacional exigem trocar o digest, o que o Renovate propõe.
-- O Flyway CLI só tem build linux-x64. Em máquinas ARM roda por emulação.
+- O Flyway CLI só tem build linux-x64. Em máquinas ARM roda por emulação. (Descoberta posterior: a imagem de migração passou a usar os JARs do Flyway sobre o Corretto headless, que roda em x64 e ARM. Ver [ADR 0024](./0024-flyway-jar-corretto.md).)
 - Imagens oficiais de banco não são Amazon Linux, o que é aceitável porque em produção serão serviços gerenciados.
 
 ## Alternativas consideradas

@@ -15,10 +15,11 @@ A infraestrutura local (PostgreSQL, Valkey e Mailpit) roda no Docker Compose, co
 | `valkey` | Valkey 9.1.4 ([ADR 0006](../adr/0006-valkey.md)) | `127.0.0.1:6379` | Compatível com Redis, com senha |
 | `mailpit` | Mailpit 1.34.0 | SMTP `127.0.0.1:1025`, interface `http://localhost:8025` | Captura todo e-mail enviado |
 | `docs` (profile `docs`) | Site Docusaurus, build de `docker/docs.Dockerfile` | `http://localhost:3000/boleto-docs/` | Documentação com recarga ao salvar |
+| `flyway` (profile `migrations`) | Imagem do `boleto-migrations` (Flyway por JAR, [ADR 0024](../adr/0024-flyway-jar-corretto.md)), build de `../boleto-migrations` | nenhuma | Aplica as migrações uma vez e sai |
 
 As portas ficam só em `127.0.0.1`: outras máquinas da rede não alcançam os serviços.
 
-O banco sobe só com o superusuário e o banco `boleto`. O schema e as roles de migração e de aplicação são do `boleto-migrations` (Task 6).
+O banco sobe só com o superusuário e o banco `boleto`. O schema e as roles de migração e de aplicação são do `boleto-migrations`, que o serviço `flyway` aplica sob demanda (ver [Migrações do banco](#migrações-do-banco-profile-migrations)).
 
 ## Comandos
 
@@ -57,20 +58,35 @@ A primeira subida do site instala as dependências e leva alguns minutos. Para o
 docker compose run --rm --no-deps docs sh -c "npm ci && npm run build"
 ```
 
+### Migrações do banco (profile `migrations`)
+
+O serviço `flyway` usa a imagem do repositório `boleto-migrations`, que precisa estar ao lado do `boleto-docs` (`../boleto-migrations`). Ele fica no profile `migrations` para que `docker compose up -d --wait`, `down` e `down -v` continuem tratando só a infraestrutura ([ADR 0027](../adr/0027-migracao-primeiro-passo.md)). A migração é um comando à parte:
+
+```bash
+docker compose run --build --rm flyway   # sobe o PostgreSQL se preciso, aplica as migrações e sai
+```
+
+- O comando usa `run --rm` e não `up --exit-code-from`: este implica `--abort-on-container-exit` e pararia o PostgreSQL ao fim. O `run` deixa o banco rodando e o container do `flyway` é removido. O código de saída do comando é o do Flyway (`echo $?`).
+- O comando espera o PostgreSQL ficar saudável (`depends_on` com `service_healthy`), roda `migrate` e `validate` e sai com o código do Flyway. Qualquer falha (SQL inválido, migração aplicada e depois alterada, senha errada) termina com código diferente de zero.
+- Rodar de novo é seguro: sem migração nova, o Flyway não faz nada.
+- `docker compose up -d --wait` não executa o `flyway`. `down -v` apaga o banco, e a próxima migração recria o schema.
+- A senha da role `boleto_app` (a que o backend usa) vem de `BOLETO_APP_PASSWORD` (padrão `boleto_app_dev`) e é aplicada a cada execução.
+
 ## Conectando
 
 Valores padrão do `docker-compose.yml` (também listados no `.env.example`). São só para desenvolvimento local.
 
 | Serviço | Endereço | Credenciais |
 |---|---|---|
-| PostgreSQL | `jdbc:postgresql://localhost:5432/boleto` | `postgres` / `postgres_dev` (até o Task 6 criar as roles) |
+| PostgreSQL (administrador) | `jdbc:postgresql://localhost:5432/boleto` | `postgres` / `postgres_dev` |
+| PostgreSQL (aplicação, depois da migração) | `jdbc:postgresql://localhost:5432/boleto` | `boleto_app` / `boleto_app_dev` (`BOLETO_APP_PASSWORD`) |
 | Valkey | `redis://localhost:6379` | senha `valkey_dev` (sem usuário) |
 | Mailpit SMTP | `localhost:1025` | sem autenticação |
 | Mailpit interface | `http://localhost:8025` | |
 
 ## Mudando portas e senhas
 
-Os valores padrão estão no próprio `docker-compose.yml` (por exemplo, `${POSTGRES_PASSWORD:-postgres_dev}`). O `.env` é opcional. Para trocar algum valor, copie o `.env.example` para `.env` na raiz (o arquivo não vai para o git), edite e rode `docker compose up -d --wait` de novo. Variáveis: `POSTGRES_PORT`, `VALKEY_PORT`, `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`, `DOCS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `VALKEY_PASSWORD`. Uma variável de ambiente do shell com o mesmo nome vence o `.env`.
+Os valores padrão estão no próprio `docker-compose.yml` (por exemplo, `${POSTGRES_PASSWORD:-postgres_dev}`). O `.env` é opcional. Para trocar algum valor, copie o `.env.example` para `.env` na raiz (o arquivo não vai para o git), edite e rode `docker compose up -d --wait` de novo. Variáveis: `POSTGRES_PORT`, `VALKEY_PORT`, `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`, `DOCS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `VALKEY_PASSWORD` e `BOLETO_APP_PASSWORD`. Uma variável de ambiente do shell com o mesmo nome vence o `.env`.
 
 Usuário e senha do PostgreSQL só valem na criação do volume. Depois de mudá-los, rode `docker compose down -v`.
 
@@ -98,7 +114,7 @@ O profile `observability` com o Grafana LGTM (`OTEL_LGTM_IMAGE`, já no `version
 
 | Teste | O que cobre | Onde roda |
 |---|---|---|
-| `scripts/compose.test.mjs` (`npm test`) | Nome do projeto `boleto-dev`, só o compose da raiz, serviços e profile `docs`, toda imagem vem de uma âncora do bloco gerado e tem digest, todo serviço de infraestrutura tem healthcheck, toda porta fica em `127.0.0.1`, toda variável tem valor padrão e consta no `.env.example` com o mesmo valor | Local e CI |
+| `scripts/compose.test.mjs` (`npm test`) | Nome do projeto `boleto-dev`, só o compose da raiz, serviços e profiles `docs` e `migrations` (o `flyway` roda uma vez e espera o banco saudável), toda imagem vem de uma âncora do bloco gerado e tem digest, todo serviço de infraestrutura tem healthcheck, toda porta fica em `127.0.0.1`, toda variável tem valor padrão e consta no `.env.example` com o mesmo valor | Local e CI |
 | `scripts/sync-versions.test.mjs` (`npm test`) | O `sync:check` detecta edição manual no bloco gerado do compose e o `sync` corrige | Local e CI |
 | Job `Compose de desenvolvimento (Linux)` | `docker compose config`, `up -d --wait` só com a infraestrutura, sondas (`select 1`, `PONG`, `NOAUTH` sem senha, HTTP 200 no Mailpit, portas em `127.0.0.1`), `down` mantém os dados e `down -v` os apaga | CI |
 

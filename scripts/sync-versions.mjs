@@ -78,13 +78,27 @@ export const TARGETS = {
     defaults: { dockerfiles: ['Dockerfile'], packageJson: ['package.json'] },
   },
   migrations: {
-    images: ['amazonlinux', 'postgres'],
-    vars: ['flyway'],
-    miseTools: [],
+    images: ['amazonlinux', 'corretto_headless', 'postgres'],
+    vars: ['flyway', 'squawk', 'node'],
+    miseTools: ['node'],
     packages: null,
-    dockerArgs: ['AL2023_IMAGE', 'FLYWAY_VERSION', 'FLYWAY_URL', 'FLYWAY_SHA256'],
-    files: [],
-    defaults: { dockerfiles: ['Dockerfile'], packageJson: [] },
+    dockerArgs: [
+      'AL2023_IMAGE',
+      'CORRETTO_HEADLESS_IMAGE',
+      'FLYWAY_VERSION',
+      'FLYWAY_MAIN_CLASS',
+      'SQUAWK_VERSION',
+      'SQUAWK_URL',
+      'SQUAWK_SHA256',
+    ],
+    // Imagem do PostgreSQL no bloco gerado do Compose de teste (compose.test.yml).
+    composeImages: ['postgres'],
+    files: ['flyway-jars', 'node-version'],
+    defaults: {
+      dockerfiles: ['Dockerfile'],
+      packageJson: [],
+      composeFiles: ['compose.test.yml'],
+    },
   },
 };
 
@@ -140,11 +154,30 @@ export function envPairs(data, targetName) {
     } else if (v === 'flyway') {
       const f = data.tools.flyway;
       pairs.push(['FLYWAY_VERSION', f.version]);
-      pairs.push(['FLYWAY_URL', f.url_linux_x64]);
-      pairs.push(['FLYWAY_SHA256', f.sha256_linux_x64]);
+      pairs.push(['FLYWAY_MAIN_CLASS', f.main_class]);
+    } else if (v === 'squawk') {
+      const s = data.tools.squawk;
+      pairs.push(['SQUAWK_VERSION', s.version]);
+      pairs.push(['SQUAWK_URL', s.url_linux_x64]);
+      pairs.push(['SQUAWK_SHA256', s.sha256_linux_x64]);
     }
   }
   return pairs;
+}
+
+/** URL de um JAR no Maven Central. */
+export const mavenUrl = (jar) =>
+  `https://repo1.maven.org/maven2/${jar.group.replaceAll('.', '/')}/${jar.artifact}/${jar.version}/${jar.artifact}-${jar.version}.jar`;
+
+/**
+ * Lista dos JARs do Flyway, uma linha por JAR: "sha256  url  arquivo".
+ * O estágio de download do Dockerfile do boleto-migrations lê este arquivo.
+ */
+export function renderFlywayJars(data, origin) {
+  const lines = Object.values(data.tools.flyway.jars).map(
+    (jar) => `${jar.sha256}  ${mavenUrl(jar)}  ${jar.artifact}-${jar.version}.jar`,
+  );
+  return `${header(origin)}${lines.join('\n')}\n`;
 }
 
 const header = (origin) =>
@@ -203,6 +236,9 @@ export function renderFiles(data, targetName, origin) {
       path: 'gradle/wrapper/gradle-wrapper.properties',
       content: renderWrapper(data, origin),
     });
+  }
+  if (t.files.includes('flyway-jars')) {
+    files.push({ path: '.platform/flyway-jars.lock', content: renderFlywayJars(data, origin) });
   }
   if (t.files.includes('node-version')) {
     files.push({ path: '.node-version', content: `${data.runtime.node.version}\n` });

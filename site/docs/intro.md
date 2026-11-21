@@ -19,7 +19,7 @@ A Fase 1 entrega a fundação (repositórios, ambiente de desenvolvimento, vers�
 | [`boleto-docs`](https://github.com/Titulize/boleto-docs) | Esta documentação, `versions.toml`, Docker Compose de desenvolvimento e scripts de bootstrap |
 | `boleto-backend` | API em Spring Boot (Java 25) |
 | `boleto-frontend` | SPA em Angular com Angular Material |
-| `boleto-migrations` | Migrações Flyway do PostgreSQL |
+| `boleto-migrations` | Migrações Flyway do PostgreSQL e imagem de migração (JAR do Flyway sobre Amazon Corretto) |
 
 ## Por onde começar
 
