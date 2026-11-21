@@ -126,7 +126,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
-      start_period: 60s  # Site de documentação (Docusaurus). Só sobe com o profile docs, para que
+      start_period: 60s
+
+  # Site de documentação (Docusaurus). Só sobe com o profile docs, para que
   # `docker compose up -d --wait` suba apenas a infraestrutura.
   docs:
     profiles: [docs]

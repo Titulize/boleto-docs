@@ -80,7 +80,9 @@ test('o backend fica no profile backend, em 127.0.0.1, depois do banco saudável
   // Imagem construída localmente (build), por isso sem âncora do bloco gerado.
   assert.match(backend.text, /^ {4}image:\s*boleto-backend:dev\s*$/m);
   assert.match(backend.text, /^ {6}SPRING_DATASOURCE_USERNAME:\s*boleto_app\s*$/m);
-});test('toda imagem de infraestrutura vem de uma âncora do bloco gerado, com digest', () => {
+});
+
+test('toda imagem de infraestrutura vem de uma âncora do bloco gerado, com digest', () => {
   for (const s of infra()) {
     const m = s.text.match(/^ {4}image:\s*(.+)$/m);
     assert.ok(m, `${s.name} sem image`);
