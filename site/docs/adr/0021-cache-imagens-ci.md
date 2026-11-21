@@ -27,6 +27,7 @@ No commit `6650ff5` da `main`, o job `Compose de desenvolvimento (Linux)` falhou
 - O job deixa de depender do registro na maior parte das execuções e fica mais rápido.
 - O cache usa a cota de armazenamento do GitHub (gratuita, dentro do limite de 10 GB). Sem custo.
 - O profile `observability` (Task 11, Grafana LGTM, imagem de mais de 1 GB) aumentará o cache. O tamanho deve ser reavaliado nessa tarefa.
+- **Descoberto na prova do cache (PR #5):** depois do `docker load` o Docker no runner Linux conhece as imagens pelo ID (igual ao digest), mas não pelo nome `repo:tag@digest`. Por isso o `compose up` do `dev up` ainda imprime `Pulling` e `Pulled` para as três imagens, em cerca de 0,5 s e sem baixar camadas. Isso é uma consulta ao registro para resolver o digest, não o download das imagens. O cache elimina a transferência de dados (a causa do `Data limit exceeded`), mas não zera as consultas ao Docker Hub. A conferência do passo de carga usa o ID por esse motivo.
 - O cache não protege o desenvolvedor local, que continua sujeito aos limites anônimos (ver o guia de [Compose de desenvolvimento](../guias/compose-dev.md)).
 
 ## Alternativas consideradas
