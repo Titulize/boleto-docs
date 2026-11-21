@@ -121,24 +121,12 @@ jobs:
     name: Compose de desenvolvimento (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      DC: docker compose -p boleto-dev
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Configuração do compose
-        run: >-
-          docker compose -f compose/docker-compose.yml --env-file .platform/versions.env
-          --env-file compose/.env.example config -q
-      - name: ShellCheck
-        run: shellcheck --shell=bash compose/dev.sh compose/tests/verify.sh
-      - name: Sintaxe dos scripts PowerShell
-        shell: pwsh
+      - name: Configuração do compose (infraestrutura e profile docs)
         run: |
-          foreach ($f in 'compose/dev.ps1', 'compose/tests/verify.ps1', 'compose/tests/dev.tests.ps1') {
-            $errs = $null; $tokens = $null
-            $null = [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$f", [ref]$tokens, [ref]$errs)
-            if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error "${f}: $($_.Message)" }; exit 1 }
-          }
+          docker compose config -q
+          docker compose --profile docs config -q
       # O PostgreSQL (public.ecr.aws) falhou com "Data limit exceeded" no commit 6650ff5 e o Valkey
       # e o Mailpit (docker.io) têm limite de pulls anônimos (ADR 0006). As imagens ficam em cache.
       # A chave vem da lista de imagens do compose, com digest: trocar um digest no versions.toml
@@ -146,9 +134,7 @@ jobs:
       - name: Lista de imagens do compose e chave do cache
         id: imagens
         run: |
-          cp compose/.env.example compose/.env
-          docker compose -f compose/docker-compose.yml --env-file .platform/versions.env \
-            --env-file compose/.env config --images | sort > "$RUNNER_TEMP/imagens.txt"
+          docker compose config --images | sort > "$RUNNER_TEMP/imagens.txt"
           echo "Imagens do compose:"; cat "$RUNNER_TEMP/imagens.txt"
           echo "chave=imagens-compose-v1-$RUNNER_OS-$RUNNER_ARCH-$(sha256sum "$RUNNER_TEMP/imagens.txt" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Restaurar o cache das imagens
@@ -186,8 +172,7 @@ jobs:
             echo "CACHE MISS ($CHAVE): baixando as imagens e salvando no cache"
           fi
           for i in 1 2 3; do
-            if docker compose -f compose/docker-compose.yml --env-file .platform/versions.env \
-              --env-file compose/.env pull; then
+            if docker compose pull; then
               # shellcheck disable=SC2046
               docker save -o "$tar_imagens" $(cat "$RUNNER_TEMP/imagens.txt")
               ls -lh "$tar_imagens"
@@ -203,62 +188,40 @@ jobs:
         with:
           path: ${{ runner.temp }}/imagens-compose.tar
           key: ${{ steps.imagens.outputs.chave }}
-      - name: dev up (Bash)
-        run: bash compose/dev.sh up
-      - name: Verificação (Bash)
-        run: bash compose/tests/verify.sh
-      - name: reset sem --yes fora de terminal recusa (código 2)
+      # A partir daqui só comandos padrão do Docker Compose, os mesmos do guia.
+      - name: docker compose up -d --wait (sobe só a infraestrutura)
         run: |
-          set +e
-          bash compose/dev.sh reset </dev/null
-          test $? -eq 2
-      - name: reset --yes apaga os dados e sobe de novo
+          docker compose up -d --wait
+          docker compose ps
+          test "$(docker compose ps --services | sort | tr '\n' ' ')" = "mailpit postgres valkey "
+      - name: Sondagens dos serviços
         run: |
-          $DC exec -T postgres psql -U postgres -d boleto -c 'create table ci_reset(id int)'
-          bash compose/dev.sh reset --yes
-          left="$($DC exec -T postgres psql -U postgres -d boleto -tAc "select to_regclass('ci_reset')")"
-          test -z "$left" || { echo "a tabela continuou depois do reset: $left"; exit 1; }
-          bash compose/tests/verify.sh
-      - name: dev down (Bash)
-        run: bash compose/dev.sh down
-      - name: dev up, verificação e down (PowerShell 7)
-        shell: pwsh
+          test "$(docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"' | tr -d '[:space:]')" = "1"
+          test "$(docker compose exec -T valkey sh -c 'valkey-cli -a "$VALKEY_PASSWORD" --no-auth-warning ping' | tr -d '[:space:]')" = "PONG"
+          docker compose exec -T valkey valkey-cli ping | grep -q NOAUTH
+          curl -fsS -o /dev/null http://localhost:8025/
+          curl -fsS -o /dev/null http://localhost:8025/api/v1/info
+          # Toda porta publicada fica em 127.0.0.1.
+          if docker compose ps --format '{{.Ports}}' | tr ',' '\n' | grep -- '->' | grep -v -- '127\.0\.0\.1:'; then
+            echo "porta publicada fora de 127.0.0.1"; exit 1
+          fi
+      - name: down mantém os dados e down -v apaga
         run: |
-          pwsh -NoProfile -File compose/dev.ps1 up
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pwsh -NoProfile -File compose/tests/verify.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pwsh -NoProfile -File compose/dev.ps1 down
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          docker compose exec -T postgres psql -U postgres -d boleto -c 'create table ci_reset(id int)'
+          docker compose down
+          test -z "$(docker compose ps -q)"
+          docker compose up -d --wait
+          test "$(docker compose exec -T postgres psql -U postgres -d boleto -tAc "select to_regclass('ci_reset')" | tr -d '[:space:]')" = "ci_reset"
+          docker compose down -v
+          docker compose up -d --wait
+          left="$(docker compose exec -T postgres psql -U postgres -d boleto -tAc "select to_regclass('ci_reset')" | tr -d '[:space:]')"
+          test -z "$left" || { echo "a tabela continuou depois do down -v: $left"; exit 1; }
       - name: Diagnóstico e limpeza
         if: always()
         run: |
-          $DC ps -a || true
-          if [ "${{ job.status }}" != "success" ]; then $DC logs --tail 50 || true; fi
-          $DC down --volumes --remove-orphans || true
-
-  compose-windows:
-    name: Compose (Windows PowerShell 5.1)
-    runs-on: windows-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Sintaxe dos scripts no Windows PowerShell 5.1
-        shell: powershell
-        run: |
-          foreach ($f in 'compose/dev.ps1', 'compose/tests/verify.ps1', 'compose/tests/dev.tests.ps1') {
-            $errs = $null; $tokens = $null
-            $null = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f).Path, [ref]$tokens, [ref]$errs)
-            if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error "${f}: $($_.Message)" }; exit 1 }
-          }
-      - name: Testes da lógica do dev.ps1 (PowerShell 7 e 5.1)
-        shell: powershell
-        run: |
-          pwsh -NoProfile -File compose/tests/dev.tests.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell -NoProfile -ExecutionPolicy Bypass -File compose/tests/dev.tests.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
+          docker compose ps -a || true
+          if [ "${{ job.status }}" != "success" ]; then docker compose logs --tail 50 || true; fi
+          docker compose --profile docs down --volumes --remove-orphans || true
   commits:
     name: Conventional Commits
     if: github.event_name == 'pull_request'
