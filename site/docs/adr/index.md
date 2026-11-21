@@ -41,3 +41,7 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0028](./0028-lint-sql-e-testes.md) | Lint de SQL com Squawk e testes em PostgreSQL real | Aceito |
 | [0029](./0029-permissao-por-tela.md) | Permissão por tela | Aceito |
 | [0030](./0030-manutencao-de-dados-e-origem-do-tenant.md) | Manutenção de dados pela dona das tabelas e origem do tenant | Aceito |
+| [0031](./0031-primeira-main-boleto-backend.md) | Primeira `main` do `boleto-backend` por exceção | Aceito |
+| [0032](./0032-esqueleto-do-backend.md) | Esqueleto do backend | Aceito |
+| [0033](./0033-wrapper-qualidade-e-ci-do-backend.md) | Wrapper, qualidade e CI do backend | Aceito |
+| [0034](./0034-servico-backend-no-compose.md) | Serviço `backend` no Compose | Aceito |

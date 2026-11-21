@@ -24,7 +24,7 @@ As versões exatas ficam no [`versions.toml`](../guias/versoes.md).
 
 - Java 25 permite recursos recentes, e exige toolchain explícita no Gradle e imagens com Corretto 25.
 - Spring Boot 4.2 já existe. Adotamos a 4.1 por ser a linha estável com patches e atualizamos de forma planejada.
-- A compatibilidade de Spring Modulith e springdoc com a 4.1 é confirmada no esqueleto do backend.
+- A compatibilidade de Spring Modulith e springdoc com a 4.1 foi confirmada no esqueleto do backend (Task 7): Spring Boot 4.1.3, Spring Modulith 2.1.3 e springdoc 3.2.0 funcionam juntos, sem mudar nenhuma versão. Evidência no [ADR 0032](./0032-esqueleto-do-backend.md).
 
 ## Alternativas consideradas
 
