@@ -61,12 +61,27 @@ test('postgres, valkey e mailpit sobem sem profile; o site fica no profile docs'
 test('o flyway fica no profile migrations, roda uma vez e espera o banco saudável', () => {
   const flyway = services().find((s) => s.name === 'flyway');
   assert.ok(flyway, 'serviço flyway ausente');
-  assert.match(flyway.text, /^ {4}profiles:\s*\[migrations\]\s*$/m);
+  assert.match(flyway.text, /^ {4}profiles:\s*\[migrations, backend\]\s*$/m);
   assert.match(flyway.text, /^ {4}restart:\s*['"]?no['"]?\s*$/m);
   assert.match(flyway.text, /^ {6}postgres:\s*\n {8}condition:\s*service_healthy\s*$/m);
   assert.match(flyway.text, /^ {6}FLYWAY_URL:\s*jdbc:postgresql:\/\/postgres:5432\//m);
   assert.match(flyway.text, /^ {6}FLYWAY_PLACEHOLDERS_APP_PASSWORD:/m);
 });
+test('o backend fica no profile backend, em 127.0.0.1, depois do banco saudável e da migração', () => {
+  const backend = services().find((s) => s.name === 'backend');
+  assert.ok(backend, 'serviço backend ausente');
+  assert.match(backend.text, /^ {4}profiles:\s*\[backend\]\s*$/m);
+  assert.match(backend.text, /^ {4}restart:\s*['"]?no['"]?\s*$/m);
+  assert.match(backend.text, /^ {6}- '127\.0\.0\.1:\$\{BACKEND_PORT:-8080\}:8080'\s*$/m);
+  assert.match(backend.text, /^ {6}postgres:\s*\n {8}condition:\s*service_healthy\s*$/m);
+  assert.match(backend.text, /^ {6}flyway:\s*\n {8}condition:\s*service_completed_successfully\s*$/m);
+  assert.doesNotMatch(backend.text, /^ {6}valkey:/m, 'o backend ainda não depende do valkey');
+  assert.match(backend.text, /^ {4}healthcheck:/m);
+  // Imagem construída localmente (build), por isso sem âncora do bloco gerado.
+  assert.match(backend.text, /^ {4}image:\s*boleto-backend:dev\s*$/m);
+  assert.match(backend.text, /^ {6}SPRING_DATASOURCE_USERNAME:\s*boleto_app\s*$/m);
+});
+
 test('toda imagem de infraestrutura vem de uma âncora do bloco gerado, com digest', () => {
   for (const s of infra()) {
     const m = s.text.match(/^ {4}image:\s*(.+)$/m);

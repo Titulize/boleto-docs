@@ -9,6 +9,8 @@
 #   docker compose run --build --rm flyway   aplica as migrações uma vez (não para o postgres)
 #       (precisa do boleto-migrations ao lado, em ../boleto-migrations; sai com código
 #       diferente de zero se uma migração falhar; os comandos acima não executam o flyway)
+#   docker compose --profile backend up -d --build --wait   sobe o backend (build de ../boleto-backend)
+#       com o postgres, a migração (flyway) e a espera da saúde do backend
 #
 # As imagens (tag e digest) ficam no bloco gerado abaixo, escrito pela sincronização a partir
 # do versions.toml (npm run sync). Nunca edite o bloco: a CI falha se ele divergir.
@@ -18,6 +20,8 @@
 # O schema e as roles do banco são do boleto-migrations, aplicados pelo serviço flyway (profile
 # migrations, execução única, ADR 0027). Sem o profile, `up -d --wait`, `down` e `down -v` continuam
 # valendo só para a infraestrutura.
+# O backend (profile backend, ADR 0034) puxa o postgres e a migração sozinho. Em worktree, aponte
+# BACKEND_CONTEXT e MIGRATIONS_CONTEXT para os diretórios dos repositórios (modelo em .env.example).
 # O Task 11 acrescenta o serviço otel-lgtm com `profiles: [observability]`.
 name: boleto-dev
 
@@ -80,9 +84,9 @@ services:
   # `up --exit-code-from flyway`: implica --abort-on-container-exit e para o postgres no fim.
   # Em produção a mesma imagem é o primeiro passo do deploy (ADR 0027).
   flyway:
-    profiles: [migrations]
+    profiles: [migrations, backend]
     build:
-      context: ../boleto-migrations
+      context: ${MIGRATIONS_CONTEXT:-../boleto-migrations}
     image: boleto-migrations:dev
     depends_on:
       postgres:
@@ -94,6 +98,36 @@ services:
       FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
       # Senha da role boleto_app (a que o backend usa), aplicada a cada execução pelo afterMigrate.
       FLYWAY_PLACEHOLDERS_APP_PASSWORD: ${BOLETO_APP_PASSWORD:-boleto_app_dev}
+  # API Spring Boot (boleto-backend). Só sobe com o profile backend, que também ativa o flyway e o
+  # postgres: o backend espera o banco saudável e a migração concluída com sucesso (ADR 0027).
+  # Não depende do valkey (o Task 9 acrescenta). A documentação da API (Swagger UI) fica ligada só
+  # aqui, no dev (ADR 0032). O contexto de build é ../boleto-backend; em worktree use BACKEND_CONTEXT.
+  backend:
+    profiles: [backend]
+    build:
+      context: ${BACKEND_CONTEXT:-../boleto-backend}
+    image: boleto-backend:dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+    restart: 'no'
+    ports:
+      - '127.0.0.1:${BACKEND_PORT:-8080}:8080'
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-boleto}
+      SPRING_DATASOURCE_USERNAME: boleto_app
+      SPRING_DATASOURCE_PASSWORD: ${BOLETO_APP_PASSWORD:-boleto_app_dev}
+      SPRINGDOC_API_DOCS_ENABLED: 'true'
+      SPRINGDOC_SWAGGER_UI_ENABLED: 'true'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
   # Site de documentação (Docusaurus). Só sobe com o profile docs, para que
   # `docker compose up -d --wait` suba apenas a infraestrutura.
   docs:

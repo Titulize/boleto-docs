@@ -38,7 +38,7 @@ O `boleto-docs` é público: nunca colocar segredos, nomes de clientes ou dados 
 - **Expand/contract.** Cada migração precisa ser compatível com a versão anterior do backend, porque no deploy o backend antigo ainda roda sobre o schema novo. Acrescentar é permitido (tabela, coluna anulável ou com valor padrão, índice). Remover ou renomear coluna, ou tornar uma coluna `NOT NULL` sem valor padrão, são duas migrações separadas por um deploy do backend: primeiro o backend deixa de usar a coluna, depois a migração a remove. O lint de SQL bloqueia o que quebra a regra ([ADR 0027](../adr/0027-migracao-primeiro-passo.md) e [ADR 0028](../adr/0028-lint-sql-e-testes.md)).
 - **Migração aplicada não se edita.** O Flyway confere o checksum e falha. Para corrigir, crie uma migração nova.
 - **Dados de tenant.** A dona das tabelas também passa pelo RLS forçado: uma migração de dados que não defina `app.tenant_id` afeta 0 linhas sem erro ([ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md), [guia de migrações](./migracoes.md)).
-- **Primeira `main` de repositório vazio.** É a única exceção à regra de branch e PR: o commit inicial, sem código nem workflow, vai direto para a `main` ([ADR 0023](../adr/0023-primeira-main-boleto-migrations.md)).
+- **Primeira `main` de repositório vazio.** É a única exceção à regra de branch e PR: o commit inicial, sem código nem workflow, vai direto para a `main` ([ADR 0023](../adr/0023-primeira-main-boleto-migrations.md) para o `boleto-migrations` e [ADR 0031](../adr/0031-primeira-main-boleto-backend.md) para o `boleto-backend`). Cada repositório novo criado vazio precisa do seu registro.
 
 ## Versões
 

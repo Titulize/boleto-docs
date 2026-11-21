@@ -14,7 +14,7 @@ O requisito mínimo na máquina é **Docker com Compose** e **Git**. Um script i
 | [mise](https://mise.jdx.dev) | pinada | o script, com checagem de sha256 |
 | Java (Amazon Corretto 25) | pinada | o mise |
 | Node | pinada | o mise |
-| Gradle | pinada | o Gradle Wrapper de cada projeto |
+| Gradle | pinada | o Gradle Wrapper de cada projeto (`./gradlew` no Linux e macOS, `.\gradlew.bat` no Windows; o `boleto-backend` já o traz) |
 | Extensões do Kiro e do VS Code | lista em `bootstrap/extensions.txt` | o script |
 
 O mise instala as ferramentas em uma pasta do seu usuário e não mexe no Java ou no Node que já existem na máquina.
@@ -50,7 +50,9 @@ O script é idempotente: rodar de novo não reinstala nem duplica configuração
 
 Depois de instalar, **abra um novo terminal** e reinicie o Kiro ou o VS Code, para eles lerem o `JAVA_HOME` e o `PATH` novos.
 
-Próximo passo: subir a infraestrutura local com `docker compose up -d --wait` na raiz do `boleto-docs` (veja [Compose de desenvolvimento](./compose-dev.md)).
+Próximo passo: subir a infraestrutura local com `docker compose up -d --wait` na raiz do `boleto-docs` (veja [Compose de desenvolvimento](./compose-dev.md)). Para rodar o backend, `docker compose --profile backend up -d --build --wait` (precisa do `boleto-backend` e do `boleto-migrations` ao lado do `boleto-docs`).
+
+Para trabalhar no código do `boleto-backend`, rode `mise install` na pasta dele (Java 25 e Node nas versões do `mise.toml`) e `.\gradlew.bat test` ou `./gradlew test`, com o Docker ativo: os testes sobem um PostgreSQL por Testcontainers. O Gradle não baixa JDK sozinho, ele usa o Java do mise.
 
 ### Opções
 

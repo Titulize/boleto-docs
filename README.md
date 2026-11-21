@@ -12,6 +12,8 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
 | Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit, o site no profile `docs` e as migrações no profile `migrations`) | `docker-compose.yml` | pronto |
 | Flyway por JAR e Squawk nas versões centrais (alvo `migrations`, tag `v0.4.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
+| Node e google-java-format no alvo `backend` da sincronização (tag `v0.5.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
+| Serviço `backend` no Compose (profile `backend`, API Spring Boot do repositório `boleto-backend`) | `docker-compose.yml`; guia em `site/docs/guias/compose-dev.md` | pronto (Task 7, falta integrar o PR) |
 | Schema do banco, imagem de migração e testes de isolamento por tenant | repositório `boleto-migrations` (privado); guia em `site/docs/guias/migracoes.md` e modelo em `site/docs/arquitetura/modelo-de-dados.md` | pronto (Task 6, V1) |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
@@ -77,6 +79,14 @@ As migrações do banco (repositório `boleto-migrations`, ao lado deste) rodam 
 docker compose run --build --rm flyway   # aplica as migrações e sai (código ≠ 0 em qualquer erro)
 ```
 
+O backend (repositório `boleto-backend`, ao lado deste) sobe no profile `backend`, que também aplica a migração. Sem o profile, o `up -d --wait` acima continua subindo só a infraestrutura:
+
+```bash
+docker compose --profile backend up -d --build --wait   # constrói, migra e sobe o backend (http://localhost:8080)
+docker compose --profile backend down                   # remove os containers e mantém os dados
+```
+
+Health em `http://localhost:8080/actuator/health` e Swagger em `http://localhost:8080/swagger-ui.html`. Em worktree, defina `BACKEND_CONTEXT` e `MIGRATIONS_CONTEXT`. Para subir sem tocar no ambiente que já roda, use `-p <nome>` e outras portas (guia: [Compose de desenvolvimento](site/docs/guias/compose-dev.md#backend-profile-backend)).
 ## Documentação
 
 O site (Docusaurus, com ADRs, diagramas C4 em Mermaid e guias) fica em `site/` e roda em um container Amazon Linux 2023.

@@ -15,7 +15,7 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | [04](./task-04-bootstrap.md) | Scripts de bootstrap do ambiente do dev | Concluída | 2026-11-20 |
 | [05](./task-05-compose-dev.md) | Compose de desenvolvimento (infraestrutura) | Concluída | 2026-11-21 |
 | [06](./task-06-boleto-migrations.md) | Repositório `boleto-migrations` (Flyway) | Concluída | 2026-11-22 |
-| 07 | Esqueleto do backend | Não iniciada | |
+| [07](./task-07-esqueleto-backend.md) | Esqueleto do backend | Em andamento | 2026-11-21 |
 | 08 | Base multi-tenant e auditoria | Não iniciada | |
 | 09 | Autenticação e autorização | Não iniciada | |
 | 10 | Convite de usuário e "esqueci minha senha" | Não iniciada | |
