@@ -1,5 +1,5 @@
 # Compose do repositório boleto-docs.
-# Hoje só tem o site de documentação. O Task 5 acrescenta a infraestrutura de desenvolvimento.
+# Só o site de documentação. A infraestrutura de desenvolvimento fica em compose/.
 name: boleto-docs
 
 services:

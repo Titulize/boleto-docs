@@ -50,6 +50,8 @@ O script é idempotente: rodar de novo não reinstala nem duplica configuração
 
 Depois de instalar, **abra um novo terminal** e reinicie o Kiro ou o VS Code, para eles lerem o `JAVA_HOME` e o `PATH` novos.
 
+Próximo passo: subir a infraestrutura local com `dev up` (veja [Compose de desenvolvimento](./compose-dev.md)).
+
 ### Opções
 
 | Opção (PowerShell / Bash) | Efeito |

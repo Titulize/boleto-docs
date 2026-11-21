@@ -117,6 +117,94 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           bootstrap/ci/check-user-env.ps1 -ExpectedDir $dir -StaleDir (Join-Path $env:RUNNER_TEMP 'tools um')
 
+  compose-linux:
+    name: Compose de desenvolvimento (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DC: docker compose -p boleto-dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configuração do compose
+        run: >-
+          docker compose -f compose/docker-compose.yml --env-file .platform/versions.env
+          --env-file compose/.env.example config -q
+      - name: ShellCheck
+        run: shellcheck --shell=bash compose/dev.sh compose/tests/verify.sh
+      - name: Sintaxe dos scripts PowerShell
+        shell: pwsh
+        run: |
+          foreach ($f in 'compose/dev.ps1', 'compose/tests/verify.ps1', 'compose/tests/dev.tests.ps1') {
+            $errs = $null; $tokens = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$f", [ref]$tokens, [ref]$errs)
+            if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error "${f}: $($_.Message)" }; exit 1 }
+          }
+      # As imagens do docker.io estão sujeitas ao limite de pulls anônimos (ADR 0006).
+      - name: Baixar as imagens (até 3 tentativas)
+        run: |
+          cp compose/.env.example compose/.env
+          for i in 1 2 3; do
+            docker compose -f compose/docker-compose.yml --env-file .platform/versions.env \
+              --env-file compose/.env pull && exit 0
+            echo "tentativa $i falhou"; sleep 20
+          done
+          exit 1
+      - name: dev up (Bash)
+        run: bash compose/dev.sh up
+      - name: Verificação (Bash)
+        run: bash compose/tests/verify.sh
+      - name: reset sem --yes fora de terminal recusa (código 2)
+        run: |
+          set +e
+          bash compose/dev.sh reset </dev/null
+          test $? -eq 2
+      - name: reset --yes apaga os dados e sobe de novo
+        run: |
+          $DC exec -T postgres psql -U postgres -d boleto -c 'create table ci_reset(id int)'
+          bash compose/dev.sh reset --yes
+          left="$($DC exec -T postgres psql -U postgres -d boleto -tAc "select to_regclass('ci_reset')")"
+          test -z "$left" || { echo "a tabela continuou depois do reset: $left"; exit 1; }
+          bash compose/tests/verify.sh
+      - name: dev down (Bash)
+        run: bash compose/dev.sh down
+      - name: dev up, verificação e down (PowerShell 7)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File compose/dev.ps1 up
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File compose/tests/verify.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File compose/dev.ps1 down
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Diagnóstico e limpeza
+        if: always()
+        run: |
+          $DC ps -a || true
+          if [ "${{ job.status }}" != "success" ]; then $DC logs --tail 50 || true; fi
+          $DC down --volumes --remove-orphans || true
+
+  compose-windows:
+    name: Compose (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Sintaxe dos scripts no Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          foreach ($f in 'compose/dev.ps1', 'compose/tests/verify.ps1', 'compose/tests/dev.tests.ps1') {
+            $errs = $null; $tokens = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f).Path, [ref]$tokens, [ref]$errs)
+            if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error "${f}: $($_.Message)" }; exit 1 }
+          }
+      - name: Testes da lógica do dev.ps1 (PowerShell 7 e 5.1)
+        shell: powershell
+        run: |
+          pwsh -NoProfile -File compose/tests/dev.tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -ExecutionPolicy Bypass -File compose/tests/dev.tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   commits:
     name: Conventional Commits
     if: github.event_name == 'pull_request'

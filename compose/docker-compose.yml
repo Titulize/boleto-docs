@@ -1,0 +1,65 @@
+# Infraestrutura de desenvolvimento: PostgreSQL, Valkey e Mailpit.
+#
+# Use os atalhos, que já passam os arquivos de variáveis certos:
+#   Windows:       .\compose\dev.ps1 up | down | reset
+#   Linux e macOS: compose/dev.sh up | down | reset
+#
+# As imagens vêm de ../.platform/versions.env (gerado pela sincronização a partir do
+# versions.toml, com digest). Nunca escreva tag ou digest aqui. As credenciais e as portas
+# vêm de compose/.env (copiado de compose/.env.example pelo `dev up`).
+#
+# O schema e as roles do banco são do boleto-migrations (Task 6).
+# O Task 11 acrescenta o serviço otel-lgtm com `profiles: [observability]` (OTEL_LGTM_IMAGE).
+name: boleto-dev
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?defina POSTGRES_IMAGE (use compose/dev.ps1 ou compose/dev.sh)}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER em compose/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD em compose/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB em compose/.env}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # No PostgreSQL 18 o PGDATA fica em /var/lib/postgresql/18/docker.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  valkey:
+    image: ${VALKEY_IMAGE:?defina VALKEY_IMAGE (use compose/dev.ps1 ou compose/dev.sh)}
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:?defina VALKEY_PASSWORD em compose/.env}
+    command: ['valkey-server', '--appendonly', 'yes', '--requirepass', '${VALKEY_PASSWORD}']
+    ports:
+      - '127.0.0.1:${VALKEY_PORT:-6379}:6379'
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'valkey-cli -a "$$VALKEY_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  mailpit:
+    image: ${MAILPIT_IMAGE:?defina MAILPIT_IMAGE (use compose/dev.ps1 ou compose/dev.sh)}
+    ports:
+      - '127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025'
+    healthcheck:
+      # A imagem não tem shell nem curl. O próprio binário tem o subcomando readyz.
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  postgres_data:
+  valkey_data:
