@@ -12,12 +12,12 @@ Todo o schema do banco pertence ao repositório `boleto-migrations`. Ninguém al
 O `boleto-migrations` precisa estar ao lado do `boleto-docs` (`../boleto-migrations`). Na raiz do `boleto-docs`:
 
 ```bash
-docker compose up -d --wait                 # só a infraestrutura (não migra)
-docker compose run --build --rm flyway      # sobe o PostgreSQL se preciso, aplica as migrações e sai
+docker compose up -d                         # sobe tudo: o flyway migra a cada up e o backend espera por ele
+docker compose run --build --rm flyway      # só a migração: sobe o PostgreSQL se preciso, aplica e sai
 echo $?                                     # 0 se deu certo (no PowerShell: $LASTEXITCODE)
 ```
 
-A imagem roda uma vez, valida os checksums e as pendências, aplica as pendentes, confere de novo (`validate`) e sai. Qualquer erro dá código diferente de zero: migração alterada depois de aplicada, SQL inválido, banco inacessível, senha errada ou variável obrigatória ausente. Rodar de novo sem migração nova não faz nada.
+A imagem roda uma vez, valida os checksums e as pendências, aplica as pendentes, confere de novo (`validate`) e sai. O `up -d` padrão também roda o `flyway` (o backend só inicia depois dele). Para aplicar sem subir o backend, use o `run`. Qualquer erro dá código diferente de zero: migração alterada depois de aplicada, SQL inválido, banco inacessível, senha errada ou variável obrigatória ausente. Rodar de novo sem migração nova não faz nada.
 
 Use `run --rm`, não `up --exit-code-from flyway`: o `up` implica `--abort-on-container-exit` e para o PostgreSQL ao fim.
 
@@ -45,7 +45,7 @@ Sem o `set_config` as consultas devolvem 0 linhas.
 
 ## Reset do banco
 
-`docker compose down -v` apaga os dados do `boleto-dev`. Depois, `docker compose up -d --wait` e `docker compose run --build --rm flyway` recriam o schema. Para não tocar o ambiente em uso, use outro nome de projeto e outra porta: `POSTGRES_PORT=15432 docker compose -p boleto-t6 up -d --wait postgres` e depois `POSTGRES_PORT=15432 docker compose -p boleto-t6 run --build --rm flyway`, terminando com `docker compose -p boleto-t6 down -v`.
+`docker compose down -v` apaga os dados do `boleto-dev`. Depois, `docker compose up -d` recria o schema (o `flyway` roda no `up`). Para não tocar o ambiente em uso, use outro nome de projeto e outra porta: `POSTGRES_PORT=15432 docker compose -p boleto-t6 up -d --wait postgres` e depois `POSTGRES_PORT=15432 docker compose -p boleto-t6 run --build --rm flyway`, terminando com `docker compose -p boleto-t6 down -v`.
 
 ## Criar uma migração
 

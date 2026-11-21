@@ -129,6 +129,10 @@ Nada pendente deste Task. O que segue pertence a outras tarefas:
 
 Não verificado no fechamento: o código de saída do `compose run ... tests` local (a CI repetiu e passou), a exclusão da branch remota `docs/task-06-fechamento` do `boleto-migrations` e o link do ADR 0030 no README dele.
 
+## Nota posterior (2026-11-22): `flyway` sem profile
+
+Este registro descreve o estado da época e não foi reescrito. O [ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md) tirou o serviço `flyway` do profile `migrations`: ele roda a cada `docker compose up -d` e o backend espera por ele. O comando `docker compose run --build --rm flyway` continua valendo para rodar só a migração. O `--profile migrations` citado na verificação deixou de existir.
+
 ## Histórico
 
 | Data | Atualização |
@@ -137,3 +141,4 @@ Não verificado no fechamento: o código de saída do `compose run ... tests` lo
 | 2026-11-21 | Parte B: `boleto-migrations` com imagem, V1, roles, RLS, testes de isolamento, lint e CI (PR #1) |
 | 2026-11-21 | Parte C: documentação final, ADR 0030, modelo de dados e guia de migrações |
 | 2026-11-22 | Fechamento: README e `negativos.sh` do `boleto-migrations` (PR #2), guia de migrações e Task 6 concluída |
+| 2026-11-22 | Nota: o `up` padrão passou a subir a aplicação inteira, sem profile ([ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)) |

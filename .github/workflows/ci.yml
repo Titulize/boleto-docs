@@ -123,18 +123,21 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Configuração do compose (infraestrutura e profile docs)
+      - name: Configuração do compose (padrão e profile docs)
         run: |
           docker compose config -q
           docker compose --profile docs config -q
       # O PostgreSQL (public.ecr.aws) falhou com "Data limit exceeded" no commit 6650ff5 e o Valkey
       # e o Mailpit (docker.io) têm limite de pulls anônimos (ADR 0006). As imagens ficam em cache.
+      # Os serviços flyway e backend sobem no `up` padrão, mas a CI não tem acesso aos repositórios
+      # privados boleto-backend e boleto-migrations: ela nomeia só postgres, valkey e mailpit (ADR 0035).
+      # Com os nomes, a lista de imagens e a chave do cache são as mesmas de antes (cache continua em hit).
       # A chave vem da lista de imagens do compose, com digest: trocar um digest no versions.toml
       # muda a chave e o cache antigo deixa de valer.
       - name: Lista de imagens do compose e chave do cache
         id: imagens
         run: |
-          docker compose config --images | sort > "$RUNNER_TEMP/imagens.txt"
+          docker compose config --images postgres valkey mailpit | sort > "$RUNNER_TEMP/imagens.txt"
           echo "Imagens do compose:"; cat "$RUNNER_TEMP/imagens.txt"
           echo "chave=imagens-compose-v1-$RUNNER_OS-$RUNNER_ARCH-$(sha256sum "$RUNNER_TEMP/imagens.txt" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Restaurar o cache das imagens
@@ -172,7 +175,7 @@ jobs:
             echo "CACHE MISS ($CHAVE): baixando as imagens e salvando no cache"
           fi
           for i in 1 2 3; do
-            if docker compose pull; then
+            if docker compose pull postgres valkey mailpit; then
               # shellcheck disable=SC2046
               docker save -o "$tar_imagens" $(cat "$RUNNER_TEMP/imagens.txt")
               ls -lh "$tar_imagens"
@@ -189,9 +192,9 @@ jobs:
           path: ${{ runner.temp }}/imagens-compose.tar
           key: ${{ steps.imagens.outputs.chave }}
       # A partir daqui só comandos padrão do Docker Compose, os mesmos do guia.
-      - name: docker compose up -d --wait (sobe só a infraestrutura)
+      - name: docker compose up -d --wait postgres valkey mailpit (só a infraestrutura)
         run: |
-          docker compose up -d --wait
+          docker compose up -d --wait postgres valkey mailpit
           docker compose ps
           test "$(docker compose ps --services | sort | tr '\n' ' ')" = "mailpit postgres valkey "
       - name: Sondagens dos serviços
@@ -210,10 +213,10 @@ jobs:
           docker compose exec -T postgres psql -U postgres -d boleto -c 'create table ci_reset(id int)'
           docker compose down
           test -z "$(docker compose ps -q)"
-          docker compose up -d --wait
+          docker compose up -d --wait postgres valkey mailpit
           test "$(docker compose exec -T postgres psql -U postgres -d boleto -tAc "select to_regclass('ci_reset')" | tr -d '[:space:]')" = "ci_reset"
           docker compose down -v
-          docker compose up -d --wait
+          docker compose up -d --wait postgres valkey mailpit
           left="$(docker compose exec -T postgres psql -U postgres -d boleto -tAc "select to_regclass('ci_reset')" | tr -d '[:space:]')"
           test -z "$left" || { echo "a tabela continuou depois do down -v: $left"; exit 1; }
       - name: Diagnóstico e limpeza
