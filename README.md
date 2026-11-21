@@ -10,7 +10,8 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Site de documentação (Docusaurus) | `site/` | pronto |
 | Sincronização de versões nos outros repositórios | `scripts/sync-versions.mjs` | pronto |
 | Scripts de bootstrap do ambiente do dev | `bootstrap/` | pronto |
-| Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit e o site no profile `docs`) | `docker-compose.yml` | pronto |
+| Docker Compose de desenvolvimento (PostgreSQL, Valkey, Mailpit, o site no profile `docs` e as migrações no profile `migrations`) | `docker-compose.yml` | pronto |
+| Flyway por JAR e Squawk nas versões centrais (alvo `migrations`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto (Task 6, parte A) |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
 
@@ -20,7 +21,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 
 - Toda versão é exata. Sem faixas (`^`, `~`, `*`), sem `latest`.
 - Toda imagem Docker tem tag e digest. Todo download tem URL e sha256.
-- As imagens do backend, do frontend e do Flyway partem do Amazon Linux 2023.
+- As imagens do backend, do frontend e das migrações partem do Amazon Linux 2023. O Flyway entra como JAR sobre o Corretto headless, com o sha256 de cada JAR no `versions.toml` ([ADR 0024](site/docs/adr/0024-flyway-jar-corretto.md)).
 - Cada mudança recebe uma tag `vX.Y.Z`. Os outros repositórios fixam uma tag e nunca leem a `main`.
 - O Renovate abre os PRs de atualização. Digests e checksums de downloads exigem revisão manual.
 
@@ -68,6 +69,12 @@ docker compose down -v        # reset: apaga os dados
 ```
 
 Credenciais e portas têm valor padrão no `docker-compose.yml`. O `.env` é opcional (modelo em `.env.example`). As imagens ficam no bloco gerado do próprio arquivo, escrito por `npm run sync`. Testes sem Docker: `npm test`. Veja [Compose de desenvolvimento](site/docs/guias/compose-dev.md).
+
+As migrações do banco (repositório `boleto-migrations`, ao lado deste) rodam à parte, no profile `migrations`, e não entram no `up -d --wait`:
+
+```bash
+docker compose up --build --exit-code-from flyway flyway   # aplica as migrações e sai (código ≠ 0 em qualquer erro)
+```
 
 ## Documentação
 

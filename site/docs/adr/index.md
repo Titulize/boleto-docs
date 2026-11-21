@@ -33,3 +33,10 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0020](./0020-compose-dev.md) | Compose de desenvolvimento | Substituído em parte pelo 0022 |
 | [0021](./0021-cache-imagens-ci.md) | Cache das imagens Docker na CI | Aceito |
 | [0022](./0022-compose-unico.md) | Compose único, só com comandos padrão | Aceito |
+| [0023](./0023-primeira-main-boleto-migrations.md) | Primeira `main` do `boleto-migrations` por exceção | Aceito |
+| [0024](./0024-flyway-jar-corretto.md) | Flyway pelo JAR sobre Amazon Corretto headless | Aceito |
+| [0025](./0025-modelo-de-dados-v1.md) | Modelo de dados da V1 | Aceito |
+| [0026](./0026-roles-e-rls.md) | Roles do banco e RLS forçado | Aceito |
+| [0027](./0027-migracao-primeiro-passo.md) | A migração é o primeiro passo do deploy | Aceito |
+| [0028](./0028-lint-sql-e-testes.md) | Lint de SQL com Squawk e testes em PostgreSQL real | Aceito |
+| [0029](./0029-permissao-por-tela.md) | Permissão por tela | Aceito |

@@ -6,13 +6,18 @@
 #   docker compose down           para e mantém os dados
 #   docker compose down -v        reset: apaga os dados
 #   docker compose --profile docs up -d --wait   sobe também o site de documentação
+#   docker compose up --build --exit-code-from flyway flyway   aplica as migrações uma vez
+#       (precisa do boleto-migrations ao lado, em ../boleto-migrations; sai com código
+#       diferente de zero se uma migração falhar; os comandos acima não executam o flyway)
 #
 # As imagens (tag e digest) ficam no bloco gerado abaixo, escrito pela sincronização a partir
 # do versions.toml (npm run sync). Nunca edite o bloco: a CI falha se ele divergir.
 # As credenciais e as portas têm valor padrão de desenvolvimento neste arquivo. Para trocar,
 # crie um .env na raiz (modelo em .env.example). O .env não vai para o git.
 #
-# O schema e as roles do banco são do boleto-migrations (Task 6).
+# O schema e as roles do banco são do boleto-migrations, aplicados pelo serviço flyway (profile
+# migrations, execução única, ADR 0027). Sem o profile, `up -d --wait`, `down` e `down -v` continuam
+# valendo só para a infraestrutura.
 # O Task 11 acrescenta o serviço otel-lgtm com `profiles: [observability]`.
 name: boleto-dev
 
@@ -69,6 +74,24 @@ services:
       timeout: 5s
       retries: 20
       start_period: 5s
+  # Migrações do banco (boleto-migrations): executa uma vez e sai. Fica no profile migrations para
+  # que `docker compose up -d --wait` suba só a infraestrutura. `docker compose up flyway` ativa o
+  # profile e sobe o postgres antes. Em produção a mesma imagem é o primeiro passo do deploy (ADR 0027).
+  flyway:
+    profiles: [migrations]
+    build:
+      context: ../boleto-migrations
+    image: boleto-migrations:dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-boleto}
+      FLYWAY_USER: ${POSTGRES_USER:-postgres}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
+      # Senha da role boleto_app (a que o backend usa), aplicada a cada execução pelo afterMigrate.
+      FLYWAY_PLACEHOLDERS_APP_PASSWORD: ${BOLETO_APP_PASSWORD:-boleto_app_dev}
   # Site de documentação (Docusaurus). Só sobe com o profile docs, para que
   # `docker compose up -d --wait` suba apenas a infraestrutura.
   docs:

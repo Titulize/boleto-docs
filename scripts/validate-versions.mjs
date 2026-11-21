@@ -19,6 +19,8 @@ const REQUIRED_SECTIONS = [
   'runtime.node',
   'tools.gradle',
   'tools.flyway',
+  'tools.flyway.jars',
+  'tools.squawk',
   'tools.mise',
   'images.amazonlinux',
   'images.corretto_jdk',
@@ -30,6 +32,8 @@ const REQUIRED_SECTIONS = [
   'backend.libs',
   'frontend.packages',
 ];
+
+const MAVEN_PART = /^[A-Za-z0-9_.-]+$/;
 
 const isTable = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const get = (obj, path) => path.split('.').reduce((acc, k) => (isTable(acc) ? acc[k] : undefined), obj);
@@ -46,6 +50,39 @@ function checkHash(errors, where, value, regex, label) {
   if (typeof value !== 'string' || !regex.test(value)) {
     errors.push(`${where}: ${label} ausente ou inválido`);
   }
+}
+
+/** Flyway pelo JAR: classe principal e lista de JARs do Maven Central (sem o tarball antigo). */
+function checkFlyway(errors, where, flyway) {
+  for (const key of ['url_linux_x64', 'sha256_linux_x64']) {
+    if (key in flyway) {
+      errors.push(`${where}.${key}: o tarball do CLI foi substituído pelos JARs em [${where}.jars]`);
+    }
+  }
+  if (typeof flyway.main_class !== 'string' || flyway.main_class === '') {
+    errors.push(`${where}.main_class ausente`);
+  }
+  const jars = flyway.jars;
+  if (!isTable(jars)) return;
+  const seen = new Set();
+  for (const [name, jar] of Object.entries(jars)) {
+    const at = `${where}.jars.${name}`;
+    if (!isTable(jar)) {
+      errors.push(`${at}: esperado { group, artifact, version, sha256 }`);
+      continue;
+    }
+    for (const key of ['group', 'artifact']) {
+      if (typeof jar[key] !== 'string' || !MAVEN_PART.test(jar[key])) {
+        errors.push(`${at}.${key} ausente ou inválido`);
+      }
+    }
+    checkVersion(errors, at, jar.version);
+    checkHash(errors, `${at}.sha256`, jar.sha256, SHA256, 'sha256');
+    const id = `${jar.group}:${jar.artifact}`;
+    if (seen.has(id)) errors.push(`${at}: JAR duplicado (${id})`);
+    seen.add(id);
+  }
+  if (seen.size === 0) errors.push(`${where}.jars vazio`);
 }
 
 export function validate(data) {
@@ -95,6 +132,9 @@ export function validate(data) {
         if (key.startsWith('sha256_') || key === 'distribution_sha256') {
           checkHash(errors, `${where}.${key}`, value, SHA256, 'sha256');
         }
+      }
+      if (name === 'flyway') {
+        checkFlyway(errors, where, entry);
       }
       // Todo url_X exige sha256_X correspondente.
       for (const key of Object.keys(entry).filter((k) => k.startsWith('url_'))) {

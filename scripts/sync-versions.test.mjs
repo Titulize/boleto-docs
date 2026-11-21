@@ -169,19 +169,82 @@ test('init do frontend aplica pins no package.json e cria .node-version', async 
   assert.ok((await check(root)).some((m) => m.includes('package.json')));
 });
 
-test('init de migrations gera as variáveis do Flyway', async () => {
+const composeTest = `name: boleto-migrations-test\n# >>> platform-versions\nx-images:\n  velho: &velho-image x\n# <<< platform-versions\nservices: {}\n`;
+
+/** Repositório de migrations inicializado a partir de um clone fake do boleto-docs. */
+async function initMigrations() {
   const src = makeSourceClone('v9.9.9');
   const root = tmp('migrations');
   writeFileSync(join(root, 'Dockerfile'), dockerfile());
+  writeFileSync(join(root, 'compose.test.yml'), composeTest);
   await update(root, { tag: 'v9.9.9', target: 'migrations', fromDir: src, init: true });
+  return root;
+}
+
+test('init de migrations gera as variáveis do Flyway por JAR e do Squawk', async () => {
+  const root = await initMigrations();
   const env = readFileSync(join(root, '.platform/versions.env'), 'utf8');
   assert.match(env, /^FLYWAY_VERSION=13\.13\.0$/m);
-  assert.match(env, /^FLYWAY_URL=https:\/\/download\.red-gate\.com\//m);
+  assert.match(env, /^FLYWAY_MAIN_CLASS=org\.flywaydb\.commandline\.Main$/m);
+  assert.match(env, /^SQUAWK_VERSION=2\.73\.0$/m);
+  assert.match(env, /^SQUAWK_URL=https:\/\/github\.com\/sbdchd\/squawk\/releases\/download\//m);
+  assert.match(env, /^SQUAWK_SHA256=[0-9a-f]{64}$/m);
+  assert.match(env, /^CORRETTO_HEADLESS_IMAGE=public\.ecr\.aws\/amazoncorretto\/amazoncorretto:25\.0\.5-al2023-headless@sha256:/m);
   assert.match(env, /^POSTGRES_IMAGE=public\.ecr\.aws\/docker\/library\/postgres:18\.7@sha256:/m);
-  assert.match(readFileSync(join(root, 'Dockerfile'), 'utf8'), /ARG FLYWAY_SHA256=[0-9a-f]{64}/);
-  assert.ok(!existsSync(join(root, 'mise.toml')), 'migrations não usa mise');
+  assert.ok(!/^FLYWAY_URL=/m.test(env) && !/^FLYWAY_SHA256=/m.test(env), 'o tarball do CLI saiu');
+  assert.ok(existsSync(join(root, 'mise.toml')) && existsSync(join(root, '.node-version')));
+  assert.deepEqual(await check(root), []);
 });
 
+test('o bloco ARG do Dockerfile de migrations traz o necessário para o build em dois estágios', async () => {
+  const root = await initMigrations();
+  const df = readFileSync(join(root, 'Dockerfile'), 'utf8');
+  for (const name of [
+    'AL2023_IMAGE',
+    'CORRETTO_HEADLESS_IMAGE',
+    'FLYWAY_VERSION',
+    'FLYWAY_MAIN_CLASS',
+    'SQUAWK_VERSION',
+    'SQUAWK_URL',
+    'SQUAWK_SHA256',
+  ]) {
+    assert.match(df, new RegExp(`^ARG ${name}=\\S+$`, 'm'), `${name} ausente`);
+  }
+  assert.ok(!df.includes('FLYWAY_URL') && !df.includes('FLYWAY_SHA256'));
+});
+
+test('flyway-jars.lock lista um JAR por linha, com sha256 e URL do Maven Central, e é estável', async () => {
+  const root = await initMigrations();
+  const text = readFileSync(join(root, '.platform/flyway-jars.lock'), 'utf8');
+  const lines = text.split('\n').filter((l) => l && !l.startsWith('#'));
+  assert.equal(lines.length, Object.keys(parseVersions(realToml).tools.flyway.jars).length);
+  for (const line of lines) {
+    assert.match(line, /^[0-9a-f]{64} {2}https:\/\/repo1\.maven\.org\/maven2\/\S+\/([^/\s]+)\/([^/\s]+)\/\1-\2\.jar {2}\1-\2\.jar$/);
+  }
+  assert.ok(lines.some((l) => l.endsWith(' flyway-core-13.13.0.jar')));
+  assert.ok(lines.some((l) => l.endsWith(' postgresql-42.7.14.jar')));
+  assert.deepEqual(sync(root), [], 'um segundo sync não muda nada');
+  assert.equal(readFileSync(join(root, '.platform/flyway-jars.lock'), 'utf8'), text);
+});
+
+test('o bloco x-images do compose.test.yml de migrations só tem o postgres', async () => {
+  const root = await initMigrations();
+  const compose = readFileSync(join(root, 'compose.test.yml'), 'utf8');
+  assert.match(compose, /^ {2}postgres: &postgres-image public\.ecr\.aws\/docker\/library\/postgres:18\.7@sha256:[0-9a-f]{64}$/m);
+  assert.ok(!compose.includes('valkey') && !compose.includes('velho'));
+  assert.match(compose, /^services: \{\}$/m);
+});
+
+test('check falha quando o flyway-jars.lock é editado à mão e o sync corrige', async () => {
+  const root = await initMigrations();
+  const path = join(root, '.platform/flyway-jars.lock');
+  writeFileSync(path, readFileSync(path, 'utf8').replace(/^[0-9a-f]{64}/m, '0'.repeat(64)));
+  const problems = await check(root);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /flyway-jars\.lock/);
+  assert.deepEqual(sync(root), ['.platform/flyway-jars.lock']);
+  assert.deepEqual(await check(root), []);
+});
 test('o env do boleto-docs traz tudo que o bootstrap precisa', () => {
   const env = readFileSync(join(repoRoot, '.platform/versions.env'), 'utf8');
   for (const key of [

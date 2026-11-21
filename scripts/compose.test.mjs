@@ -58,6 +58,15 @@ test('postgres, valkey e mailpit sobem sem profile; o site fica no profile docs'
   assert.ok(docs, 'serviço docs ausente');
   assert.match(docs.text, /^ {4}profiles:\s*\[docs\]\s*$/m);
 });
+test('o flyway fica no profile migrations, roda uma vez e espera o banco saudável', () => {
+  const flyway = services().find((s) => s.name === 'flyway');
+  assert.ok(flyway, 'serviço flyway ausente');
+  assert.match(flyway.text, /^ {4}profiles:\s*\[migrations\]\s*$/m);
+  assert.match(flyway.text, /^ {4}restart:\s*['"]?no['"]?\s*$/m);
+  assert.match(flyway.text, /^ {6}postgres:\s*\n {8}condition:\s*service_healthy\s*$/m);
+  assert.match(flyway.text, /^ {6}FLYWAY_URL:\s*jdbc:postgresql:\/\/postgres:5432\//m);
+  assert.match(flyway.text, /^ {6}FLYWAY_PLACEHOLDERS_APP_PASSWORD:/m);
+});
 test('toda imagem de infraestrutura vem de uma âncora do bloco gerado, com digest', () => {
   for (const s of infra()) {
     const m = s.text.match(/^ {4}image:\s*(.+)$/m);
