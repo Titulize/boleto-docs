@@ -5,7 +5,7 @@ title: 'Task 04: Bootstrap do ambiente'
 
 # Task 04: Scripts de bootstrap do ambiente do dev
 
-- **Situação:** Em andamento
+- **Situação:** Concluída
 - **Início:** 2026-11-20
 - **Última atualização:** 2026-11-20
 - **Repositórios:** `boleto-docs`
@@ -34,9 +34,10 @@ Configurar a máquina do desenvolvedor com um comando, exigindo só Docker, Comp
 | CI, Ubuntu | ShellCheck, `install` e `doctor` isolados, `install --install-dir` persistente e shell de login novo | verde no commit `90405d3` |
 | CI, Windows PowerShell 5.1 | `install` e `doctor` isolados, `install -InstallDir` persistente, terminal novo, troca de pasta | verde no commit `90405d3` |
 | Testes de `PATH` | `bootstrap/tests/path.tests.ps1` no PowerShell 7 e no 5.1 | 13 testes, todos passaram (local) |
-| `install` real, máquina do Danilo, modo padrão | `.\bootstrap\bootstrap.ps1 install` | **falhou** (ver abaixo), corrigido, aguardando nova execução |
+| `install` real, máquina do Danilo, modo padrão | O Danilo rodou `.\bootstrap\bootstrap.ps1 install` (`%LOCALAPPDATA%`) depois do commit `7836e1f` e informou que o `doctor` ficou todo OK | passou, verificado pelo usuário (o agente não viu a saída). A primeira execução falhou (ver abaixo) |
+| CI do commit `7836e1f` na `main` | workflows `CI` e `Documentação` | verde |
 
-Não verificado: macOS, e o `install` real concluído na máquina de um desenvolvedor.
+Não verificado: macOS.
 
 ## Falhas e correções
 
@@ -56,7 +57,7 @@ Para evitar a repetição, o [padrão do projeto](../guias/padrao-do-projeto.md)
 
 ## Pendências
 
-- Rodar o `install` real na máquina do Danilo e confirmar o `doctor` verde (aguardando autorização e a pasta escolhida).
+Nenhuma.
 
 ## Histórico
 
@@ -66,3 +67,4 @@ Para evitar a repetição, o [padrão do projeto](../guias/padrao-do-projeto.md)
 | 2026-11-20 | Opção `-InstallDir` / `--install-dir` |
 | 2026-11-20 | Registro criado junto com o padrão do projeto |
 | 2026-11-20 | Correção da falha do `install` real no modo padrão, testes de `PATH`, CI do modo padrão persistente |
+| 2026-11-20 | Danilo rodou o `install` real no modo padrão e confirmou o `doctor` todo OK. Task concluída |

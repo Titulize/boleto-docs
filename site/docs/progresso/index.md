@@ -12,7 +12,7 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | [01](./task-01-versions-toml.md) | Repositório `boleto-docs` e `versions.toml` central | Concluída | 2026-11-20 |
 | [02](./task-02-docusaurus.md) | Site de documentação viva (Docusaurus) | Concluída | 2026-11-20 |
 | [03](./task-03-sincronizacao.md) | Sincronização de versões | Concluída | 2026-11-20 |
-| [04](./task-04-bootstrap.md) | Scripts de bootstrap do ambiente do dev | Em andamento | 2026-11-20 |
+| [04](./task-04-bootstrap.md) | Scripts de bootstrap do ambiente do dev | Concluída | 2026-11-20 |
 | 05 | Compose de desenvolvimento (infraestrutura) | Não iniciada | |
 | 06 | Repositório `boleto-migrations` (Flyway) | Não iniciada | |
 | 07 | Esqueleto do backend | Não iniciada | |
