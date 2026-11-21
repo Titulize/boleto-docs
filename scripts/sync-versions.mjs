@@ -50,8 +50,14 @@ export const TARGETS = {
     miseTools: ['node'],
     packages: 'docs',
     dockerArgs: ['AL2023_IMAGE', 'NODE_VERSION', 'NODE_SHA256_X64', 'NODE_SHA256_ARM64'],
+    // Imagens gravadas no bloco gerado do Compose (docker-compose.yml na raiz).
+    composeImages: ['postgres', 'valkey', 'mailpit'],
     files: [],
-    defaults: { dockerfiles: ['docker/docs.Dockerfile'], packageJson: ['site/package.json'] },
+    defaults: {
+      dockerfiles: ['docker/docs.Dockerfile'],
+      packageJson: ['site/package.json'],
+      composeFiles: ['docker-compose.yml'],
+    },
   },
   backend: {
     images: ['amazonlinux', 'corretto_jdk', 'corretto_headless', 'postgres', 'valkey'],
@@ -228,6 +234,23 @@ export function dockerBlock(data, targetName, origin) {
   return lines.join('\n');
 }
 
+/**
+ * Bloco gerenciado do Compose: uma âncora YAML por imagem (com tag e digest), em `x-images`.
+ * Os serviços usam `image: *<nome>-image`.
+ */
+export function composeBlock(data, targetName, origin) {
+  const lines = [
+    BLOCK_START,
+    `# Gerado por sync-versions.mjs a partir de versions.toml (${origin}). Não edite este bloco.`,
+    'x-images:',
+  ];
+  for (const key of TARGETS[targetName].composeImages) {
+    lines.push(`  ${kebab(key)}: &${kebab(key)}-image ${imageRef(data.images[key])}`);
+  }
+  lines.push(BLOCK_END);
+  return lines.join('\n');
+}
+
 /** Substitui o bloco gerenciado de um texto. Falha se os marcadores não existirem. */
 export function applyBlock(text, block, label = 'arquivo') {
   const src = eol(text);
@@ -308,6 +331,18 @@ function expectedOutputs(ctx) {
       content: applyBlock(readFileSync(abs, 'utf8'), block, rel),
       kind: 'bloco do Dockerfile',
     });
+  }
+  if (TARGETS[lock.target].composeImages?.length) {
+    const composeBlk = composeBlock(data, lock.target, origin);
+    for (const rel of lock.composeFiles ?? []) {
+      const abs = join(root, rel);
+      if (!existsSync(abs)) throw new Error(`${rel} listado no lock, mas não existe`);
+      outputs.push({
+        path: rel,
+        content: applyBlock(readFileSync(abs, 'utf8'), composeBlk, rel),
+        kind: 'bloco do Compose',
+      });
+    }
   }
   const group = TARGETS[lock.target].packages;
   if (group) {
@@ -407,6 +442,7 @@ export async function update(root, { tag, target, fromDir, init = false }) {
       source: { repo: SOURCE_REPO, tag, sha256: '' },
       dockerfiles: present(d.dockerfiles),
       packageJson: present(d.packageJson),
+      ...(d.composeFiles ? { composeFiles: present(d.composeFiles) } : {}),
     };
   } else {
     lock = JSON.parse(readFileSync(lockPath, 'utf8'));

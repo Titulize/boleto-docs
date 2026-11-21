@@ -228,3 +228,23 @@ test('update rejeita tag inválida e versions.toml inválido sem gravar nada', a
 test('o boleto-docs está em dia com o próprio versions.toml', async () => {
   assert.deepEqual(await check(repoRoot), []);
 });
+test('check detecta edição manual no bloco gerado do Compose e o sync corrige', async () => {
+  const root = tmp('docs');
+  for (const f of ['.platform/lock.json', '.platform/versions.env', 'mise.toml', 'versions.toml', 'docker-compose.yml', 'docker/docs.Dockerfile', 'site/package.json']) {
+    mkdirSync(dirname(join(root, f)), { recursive: true });
+    cpSync(join(repoRoot, f), join(root, f));
+  }
+  assert.deepEqual(await check(root), []);
+  const path = join(root, 'docker-compose.yml');
+  const original = readFileSync(path, 'utf8');
+  assert.match(original, /^ {2}postgres: &postgres-image \S+@sha256:[0-9a-f]{64}$/m);
+  writeFileSync(path, original.replace(/(&postgres-image \S+@sha256:)[0-9a-f]{64}/, `$1${'0'.repeat(64)}`));
+  const problems = await check(root);
+  assert.ok(problems.some((m) => m.includes('docker-compose.yml') && m.includes('bloco do Compose')));
+  assert.deepEqual(sync(root), ['docker-compose.yml']);
+  assert.deepEqual(await check(root), []);
+});
+test('o lock do boleto-docs lista o docker-compose.yml', () => {
+  const lock = JSON.parse(readFileSync(join(repoRoot, '.platform/lock.json'), 'utf8'));
+  assert.deepEqual(lock.composeFiles, ['docker-compose.yml']);
+});

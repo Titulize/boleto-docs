@@ -1,14 +1,83 @@
-# Compose do repositório boleto-docs.
-# Só o site de documentação. A infraestrutura de desenvolvimento fica em compose/.
-name: boleto-docs
+# Compose do boleto-docs, na raiz do repositório. Só use os comandos padrão do Docker Compose:
+#
+#   docker compose up -d --wait   sobe PostgreSQL, Valkey e Mailpit e espera ficarem saudáveis
+#   docker compose ps
+#   docker compose logs -f valkey
+#   docker compose down           para e mantém os dados
+#   docker compose down -v        reset: apaga os dados
+#   docker compose --profile docs up -d --wait   sobe também o site de documentação
+#
+# As imagens (tag e digest) ficam no bloco gerado abaixo, escrito pela sincronização a partir
+# do versions.toml (npm run sync). Nunca edite o bloco: a CI falha se ele divergir.
+# As credenciais e as portas têm valor padrão de desenvolvimento neste arquivo. Para trocar,
+# crie um .env na raiz (modelo em .env.example). O .env não vai para o git.
+#
+# O schema e as roles do banco são do boleto-migrations (Task 6).
+# O Task 11 acrescenta o serviço otel-lgtm com `profiles: [observability]`.
+name: boleto-dev
+
+# >>> platform-versions
+# Gerado por sync-versions.mjs a partir de versions.toml (local). Não edite este bloco.
+x-images:
+  postgres: &postgres-image public.ecr.aws/docker/library/postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a
+  valkey: &valkey-image docker.io/valkey/valkey:9.1.4@sha256:3ab0eca823ebbf0fe352476ebac330ac9e5f14b592b9a954eab296d341e81b0e
+  mailpit: &mailpit-image docker.io/axllent/mailpit:v1.34.0@sha256:23a2ef85bc50853ab3093645d1d64679afd8887e89da5e48a88940c172591a4e
+# <<< platform-versions
 
 services:
+  postgres:
+    image: *postgres-image
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-boleto}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # No PostgreSQL 18 o PGDATA fica em /var/lib/postgresql/18/docker.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  valkey:
+    image: *valkey-image
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-valkey_dev}
+    command: ['valkey-server', '--appendonly', 'yes', '--requirepass', '${VALKEY_PASSWORD:-valkey_dev}']
+    ports:
+      - '127.0.0.1:${VALKEY_PORT:-6379}:6379'
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'valkey-cli -a "$$VALKEY_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+  mailpit:
+    image: *mailpit-image
+    ports:
+      - '127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025'
+    healthcheck:
+      # A imagem não tem shell nem curl. O próprio binário tem o subcomando readyz.
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+  # Site de documentação (Docusaurus). Só sobe com o profile docs, para que
+  # `docker compose up -d --wait` suba apenas a infraestrutura.
   docs:
+    profiles: [docs]
     build:
       context: .
       dockerfile: docker/docs.Dockerfile
     ports:
-      - '3000:3000'
+      - '127.0.0.1:${DOCS_PORT:-3000}:3000'
     volumes:
       - ./site:/app
       - docs_node_modules:/app/node_modules
@@ -22,6 +91,7 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
-
 volumes:
+  postgres_data:
+  valkey_data:
   docs_node_modules:

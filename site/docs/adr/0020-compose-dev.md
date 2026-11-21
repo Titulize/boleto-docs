@@ -4,12 +4,14 @@ title: 'ADR 0020: Compose de desenvolvimento'
 
 # ADR 0020: Compose de desenvolvimento
 
-- **Status:** Aceito
+- **Status:** Substituído em parte pelo [ADR 0022](./0022-compose-unico.md)
 - **Data:** 2026-11-20
 
 ## Contexto
 
 O desenvolvedor precisa de PostgreSQL, Valkey e Mailpit locais, com as mesmas versões do `versions.toml` ([ADR 0009](./0009-versoes-centrais.md)) e só com Docker e Compose instalados ([ADR 0011](./0011-ambiente-do-dev.md)). O `docker-compose.yml` da raiz do `boleto-docs` já sobe o site de documentação, com build próprio e bind mount de `site/`.
+
+> **Substituído em parte pelo [ADR 0022](./0022-compose-unico.md):** o arquivo único na raiz, a ausência de atalhos (`dev.ps1`, `dev.sh`), as imagens no bloco gerado do próprio compose e o `reset` por `docker compose down -v`. Continuam valendo: portas em `127.0.0.1`, Valkey com senha, volumes nomeados, Mailpit em memória e o profile `observability`.
 
 ## Decisão
 

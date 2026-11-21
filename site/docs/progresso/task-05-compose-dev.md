@@ -7,14 +7,18 @@ title: 'Task 05: Compose de desenvolvimento'
 
 - **Situação:** Concluída
 - **Início:** 2026-11-20
-- **Última atualização:** 2026-11-21
+- **Última atualização:** 2026-11-21 (revisão: compose único, [ADR 0022](../adr/0022-compose-unico.md))
 - **Repositórios:** `boleto-docs`
+
 
 ## Objetivo
 
 Subir PostgreSQL, Valkey e Mailpit locais com um comando, nas versões do `versions.toml`, com healthchecks e atalhos `dev up`, `dev down` e `dev reset`.
 
-## Entregue
+## Entregue (entrega original)
+
+Os atalhos, o `compose/` e o job do Windows descritos nesta e na próxima seção foram substituídos pela revisão "Compose único" mais abaixo.
+
 
 - `compose/docker-compose.yml` (projeto `boleto-dev`): PostgreSQL 18.7, Valkey 9.1.4 e Mailpit 1.34.0, com healthchecks, volumes nomeados `postgres_data` e `valkey_data` e portas em `127.0.0.1`. As imagens vêm de `.platform/versions.env`, por digest.
 - `compose/.env.example` com portas e credenciais de desenvolvimento. O `up` cria o `compose/.env` a partir dele.
@@ -74,6 +78,49 @@ Todos passaram na primeira execução: CI / Validar versions.toml e testes, CI /
 - Nenhuma do Task 5. A publicação no GitHub Pages é conferida na `main` após a integração.
 - Schema e roles do banco: Task 6.
 
+## Revisão: compose único e só comandos padrão (ADR 0022)
+
+Depois da entrega, o uso foi simplificado a pedido do desenvolvedor. O que mudou em relação ao que está descrito acima:
+
+- `docker-compose.yml` único na raiz (infraestrutura e site). O site fica no profile `docs`. A pasta `compose/`, os atalhos `dev.ps1` e `dev.sh`, os verificadores `verify.*` e o `dev.tests.ps1` foram removidos. O reset é `docker compose down -v`, sem confirmação.
+- Imagens com digest no bloco gerado do próprio arquivo (âncoras em `x-images`), escrito pelo alvo `docs` do `sync-versions.mjs` (lista `composeFiles` do `.platform/lock.json`). O `sync:check` falha se o bloco for editado.
+- Valores padrão de desenvolvimento no arquivo. O `.env` é opcional, e o `.env.example` (agora na raiz) lista as variáveis.
+- Nome do projeto mantido em `boleto-dev`: containers e volumes do ambiente que já rodava são os mesmos.
+- CI: o job `Compose de desenvolvimento (Linux)` usa os comandos padrão, com sondas inline e o ciclo `down` / `down -v`, e mantém a chave do cache das imagens (a lista de imagens não mudou). O job `Compose (Windows PowerShell 5.1)` foi removido.
+
+### Verificação da revisão
+
+Local: Windows, Docker Desktop 29.8, Compose 5.5. As demonstrações usaram o projeto `boleto-demo-uni` (portas 25432, 26379, 28025, 21025 e 23000), para não tocar no `boleto-dev` do desenvolvedor, que ficou `healthy` do começo ao fim.
+
+| O quê | Como | Resultado |
+|---|---|---|
+| Subida | `docker compose up -d --wait` na raiz, sem `-f` | saiu 0, PostgreSQL, Valkey e Mailpit `healthy`, sem o site |
+| Mailpit | `GET /` e `GET /api/v1/info` na porta de interface | HTTP 200 nos dois |
+| Sondas | `select 1`, `PONG` com senha, `NOAUTH` sem senha | passaram |
+| `down` mantém os dados | tabela no PostgreSQL e chave no Valkey, `down`, `up -d --wait` | os dois dados continuaram, volumes preservados |
+| `down -v` apaga | mesma tabela e chave, `down -v`, `up -d --wait` | sem volumes entre os dois, tabela e chave sumiram |
+| Site | `docker compose --profile docs up -d --wait --build docs` e `up -d --wait docs` | `docs` `healthy`, HTTP 200 em `/boleto-docs/` |
+| Build do site | `docker compose run --rm --no-deps docs sh -c "npm ci && npm run build"` (comando do padrão do projeto) | saiu 0, sem links quebrados |
+| `logs` | `docker compose logs valkey --tail 3` | mostrou o log |
+| Passos da CI no Bash | os passos novos do job, em Git Bash, contra o projeto de demonstração | `SIM-OK` |
+| `npm run validate`, `sync:check`, `npm test` | | passaram (32 testes) |
+| `docker compose config -q` (padrão e `--profile docs`) | | sem erros |
+
+Os resultados da CI do PR ficam na seção seguinte, preenchida depois da integração.
+
+### Falhas e correções da revisão
+
+- **Teste novo do `sync:check` falhou na primeira execução:** a cópia temporária do repositório não tinha `.platform/versions.env` nem `mise.toml`, então o `check` acusava divergência neles. O teste passou a copiá-los.
+- **Passo da CI que não falharia:** a sondagem das portas usava `! comando`, e o Bash com `-e` ignora falha de pipeline negado. Trocado por `if ...; then exit 1; fi` antes de enviar.
+- **Descoberta na demonstração:** `docker compose down -v` sem `--profile docs` não para o site nem apaga o `docs_node_modules`. O guia e o ADR 0022 documentam que, para parar o site, o comando é `docker compose --profile docs down`.
+- **Saída do terminal engolida** em duas execuções (comandos do Docker com barra de progresso). A demonstração foi repetida com um script que grava a saída em arquivo.
+
+### Pendências da revisão
+
+- Resultado da CI do PR e da `main` (preencher depois da integração).
+- Se a regra de proteção da `main` exigir o job `Compose (Windows PowerShell 5.1)` pelo nome, precisa ser retirada da lista de checks obrigatórios.
+- Revisão do avaliador: o teste exigia a ausência da pasta `compose/`, e o `compose/.env` do dev (ignorado pelo git) a mantém depois do pull, o que faria `npm test` falhar na máquina dele (a CI, com checkout limpo, passava). O teste agora confere só os arquivos rastreados. Guia e ADR 0022 dizem para copiar os valores do `compose/.env` para o `.env` da raiz e apagar `compose/`.
+
 ## Histórico
 
 | Data | Atualização |
@@ -81,3 +128,4 @@ Todos passaram na primeira execução: CI / Validar versions.toml e testes, CI /
 | 2026-11-20 | Compose, atalhos, verificação, testes, CI e documentação. Demo local passou |
 | 2026-11-20 | PR #4 com todos os jobs verdes. Task concluída e integrada por squash |
 | 2026-11-21 | CI falhou no `6650ff5` por limite de pulls. Cache das imagens na CI (ADR 0021) |
+| 2026-11-21 | Revisão: compose único na raiz, sem atalhos, imagens em bloco gerado (ADR 0022) |

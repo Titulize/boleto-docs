@@ -3,5 +3,6 @@
   "target": "docs",
   "source": "local",
   "dockerfiles": ["docker/docs.Dockerfile"],
-  "packageJson": ["site/package.json"]
+  "packageJson": ["site/package.json"],
+  "composeFiles": ["docker-compose.yml"]
 }
