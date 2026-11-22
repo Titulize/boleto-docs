@@ -36,17 +36,31 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: ShellCheck
-        run: shellcheck --shell=bash bootstrap/bootstrap.sh
-      - name: Sintaxe do script PowerShell
+        run: |
+          shellcheck --shell=bash bootstrap/bootstrap.sh bootstrap/tests/hook.tests.sh
+          shellcheck --shell=sh bootstrap/hooks/commit-msg.sh
+      - name: Sintaxe dos scripts PowerShell
         shell: pwsh
         run: |
-          $errs = $null; $tokens = $null
-          $null = [System.Management.Automation.Language.Parser]::ParseFile("$PWD/bootstrap/bootstrap.ps1", [ref]$tokens, [ref]$errs)
-          if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error $_.Message }; exit 1 }
+          foreach ($f in 'bootstrap/bootstrap.ps1', 'bootstrap/tests/path.tests.ps1', 'bootstrap/tests/hook.tests.ps1') {
+            $errs = $null; $tokens = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$f", [ref]$tokens, [ref]$errs)
+            if ($errs.Count -gt 0) { $errs | ForEach-Object { Write-Error "${f}: $($_.Message)" }; exit 1 }
+          }
+      # Repositórios de teste ao lado do checkout (o hook é gravado em cada repositório presente).
+      # O backend recebe um commit inicial, o frontend fica vazio.
+      - name: Repositórios de teste (backend com um commit, frontend vazio)
+        run: |
+          parent="$(dirname "$PWD")"
+          git init -q -b main "$parent/boleto-backend"
+          git -C "$parent/boleto-backend" -c user.name=ci -c user.email=ci@example.invalid commit -q --allow-empty -m "chore: commit inicial de teste"
+          git init -q -b main "$parent/boleto-frontend"
       - name: Instalar em pasta isolada
         run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/bootstrap.sh install --editor none
       - name: Doctor
         run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/bootstrap.sh doctor --editor none
+      - name: Hook commit-msg (cenários)
+        run: BOLETO_DEV_HOME="$RUNNER_TEMP/boleto-dev" bash bootstrap/tests/hook.tests.sh
       # O runner é descartável: daqui em diante o install grava de verdade nos arquivos do shell.
       - name: Instalar no local padrão (persistente) e conferir em shell novo
         run: |
@@ -70,6 +84,16 @@ jobs:
       BOLETO_IGNORE_DOCKER: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Repositórios de teste ao lado do checkout (o hook é gravado em cada repositório presente).
+      # O backend recebe um commit inicial, o frontend fica vazio.
+      - name: Repositórios de teste (backend com um commit, frontend vazio)
+        shell: powershell
+        run: |
+          $parent = Split-Path -Parent $PWD.Path
+          git init -q -b main (Join-Path $parent 'boleto-backend')
+          git -C (Join-Path $parent 'boleto-backend') -c user.name=ci -c user.email=ci@example.invalid commit -q --allow-empty -m 'chore: commit inicial de teste'
+          git init -q -b main (Join-Path $parent 'boleto-frontend')
+          exit 0
       - name: Instalar em pasta isolada
         shell: powershell
         run: |
@@ -81,6 +105,14 @@ jobs:
         run: |
           $env:BOLETO_DEV_HOME = Join-Path $env:RUNNER_TEMP 'boleto-dev'
           powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/bootstrap.ps1 doctor -Editor none
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Hook commit-msg (cenários, PowerShell 7 e 5.1)
+        shell: powershell
+        run: |
+          $env:BOLETO_DEV_HOME = Join-Path $env:RUNNER_TEMP 'boleto-dev'
+          pwsh -NoProfile -File bootstrap/tests/hook.tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap/tests/hook.tests.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Testes da lógica de PATH (PowerShell 7 e 5.1)
         shell: powershell

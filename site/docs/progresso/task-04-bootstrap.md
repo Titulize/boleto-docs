@@ -68,3 +68,8 @@ Nenhuma.
 | 2026-11-20 | Registro criado junto com o padrão do projeto |
 | 2026-11-20 | Correção da falha do `install` real no modo padrão, testes de `PATH`, CI do modo padrão persistente |
 | 2026-11-20 | Danilo rodou o `install` real no modo padrão e confirmou o `doctor` todo OK. Task concluída |
+
+## Atualização posterior
+
+Em 2026-11-22 o bootstrap passou a instalar o hook commit-msg (commitlint). Veja [Melhoria M1](./melhoria-hook-commit-msg.md) e o [ADR 0043](../adr/0043-hook-commit-msg.md).
+
