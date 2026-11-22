@@ -2,8 +2,10 @@
 title: 'ADR 0033: Wrapper, qualidade e CI do backend'
 ---
 # ADR 0033: Wrapper, qualidade e CI do backend
-- **Status:** Aceito
+- **Status:** Substituído em parte pelo [ADR 0036](./0036-schema-real-nos-testes-do-backend.md)
 - **Data:** 2026-11-21
+
+> **Substituído em parte pelo [ADR 0036](./0036-schema-real-nos-testes-do-backend.md):** os testes que sobem o Spring deixam de usar um PostgreSQL vazio com `@ServiceConnection`. Eles rodam a imagem real do `boleto-migrations` e conectam como `boleto_app`, e a CI constrói essa imagem pela composite action do `boleto-migrations`. O que não mudou: Wrapper, Node e formatador, Spotless, Jacoco, Ryuk desligado na CI e cache das imagens.
 ## Contexto
 O backend precisa de build reprodutível, formatação e cobertura exigidas, testes com banco real e CI no estilo do `boleto-migrations`, sem custo e sem versão solta ([padrão do projeto](../guias/padrao-do-projeto.md), princípios 1 e 3).
 ## Decisão

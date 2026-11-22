@@ -43,6 +43,13 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0030](./0030-manutencao-de-dados-e-origem-do-tenant.md) | Manutenção de dados pela dona das tabelas e origem do tenant | Aceito |
 | [0031](./0031-primeira-main-boleto-backend.md) | Primeira `main` do `boleto-backend` por exceção | Aceito |
 | [0032](./0032-esqueleto-do-backend.md) | Esqueleto do backend | Aceito |
-| [0033](./0033-wrapper-qualidade-e-ci-do-backend.md) | Wrapper, qualidade e CI do backend | Aceito |
+| [0033](./0033-wrapper-qualidade-e-ci-do-backend.md) | Wrapper, qualidade e CI do backend | Substituído em parte pelo 0036 |
 | [0034](./0034-servico-backend-no-compose.md) | Serviço `backend` no Compose | Substituído em parte pelo 0035 |
 | [0035](./0035-compose-sobe-a-aplicacao-inteira.md) | O Compose sobe a aplicação inteira no `up` padrão | Aceito |
+| [0036](./0036-schema-real-nos-testes-do-backend.md) | Schema real do `boleto-migrations` nos testes do backend | Aceito |
+| [0037](./0037-contexto-de-tenant-por-transacao.md) | Contexto de tenant e `app.tenant_id` por transação | Aceito |
+| [0038](./0038-auditoria-com-envers.md) | Auditoria com Envers, revisão customizada e diff | Aceito |
+| [0039](./0039-auditoria-do-catalogo-tela.md) | Auditoria do catálogo `tela` | Aceito |
+| [0040](./0040-problem-details-e-catalogo-de-erros.md) | Problem Details e catálogo de erros | Aceito |
+| [0041](./0041-logs-json-com-traceid.md) | Logs JSON com `traceId` | Aceito |
+| [0042](./0042-v2-tenant-da-auditoria-da-empresa.md) | V2: tenant da auditoria da empresa gestora | Aceito |
