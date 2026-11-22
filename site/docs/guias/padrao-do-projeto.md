@@ -50,6 +50,7 @@ O `boleto-docs` é público: nunca colocar segredos, nomes de clientes ou dados 
 - Commits em [Conventional Commits](./commits-e-releases.md). Título e linhas do corpo com no máximo 100 caracteres (regra do commitlint).
 - **Trabalho em branch e PR.** Nada vai direto para a `main`. O PR só é integrado com todos os workflows verdes. O nome da branch segue o tipo do commit: `feat/...`, `fix/...`, `docs/...`.
 - Integração por squash, com título no formato Conventional Commits.
+- **Hook `commit-msg`.** O `bootstrap install` grava o hook que roda o commitlint no commit, nos quatro repositórios e nos worktrees. O `doctor` falha se ele não estiver instalado ([guia](./ambiente-do-dev.md#hook-de-commit-commitlint), [ADR 0043](../adr/0043-hook-commit-msg.md)). A CI continua validando as mensagens do PR.
 
 ## Antes de enviar (verificação local)
 
@@ -59,8 +60,8 @@ Rode localmente as mesmas verificações da CI do repositório alterado. No `bol
 |---|---|
 | qualquer coisa (mensagens de commit) | `npx commitlint --from origin/main --to HEAD` |
 | `versions.toml` ou `scripts/` | `npm run validate`, `npm run sync:check`, `npm test` |
-| `bootstrap/bootstrap.sh` | `docker run --rm -v "<repo>:/mnt:ro" koalaman/shellcheck:stable --shell=bash /mnt/bootstrap/bootstrap.sh` |
-| `bootstrap/*.ps1` | verificação de sintaxe (parser do PowerShell) e `bootstrap/tests/path.tests.ps1` no PowerShell 7 e no Windows PowerShell 5.1 |
+| `bootstrap/bootstrap.sh`, `bootstrap/hooks/commit-msg.sh` ou `bootstrap/tests/hook.tests.sh` | `docker run --rm -v "<repo>:/mnt:ro" koalaman/shellcheck:stable --shell=bash /mnt/bootstrap/bootstrap.sh /mnt/bootstrap/tests/hook.tests.sh` e o mesmo com `--shell=sh /mnt/bootstrap/hooks/commit-msg.sh` |
+| `bootstrap/*.ps1` ou `bootstrap/tests/*.ps1` | verificação de sintaxe (parser do PowerShell) e `bootstrap/tests/path.tests.ps1` e `bootstrap/tests/hook.tests.ps1` no PowerShell 7 e no Windows PowerShell 5.1 (o `hook.tests.ps1` precisa dos repositórios de teste e do `install` isolado, como na CI) |
 | `site/` | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` (links quebrados falham) |
 
 No `boleto-migrations` (arquivos `.sh` pelo Git Bash no Windows):

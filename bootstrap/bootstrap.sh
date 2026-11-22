@@ -16,6 +16,10 @@
 #   --editor <nome>    kiro, code ou none (padrão: todos os que forem encontrados)
 #   -h, --help         mostra esta ajuda
 #
+# O install também grava o hook commit-msg (commitlint) em cada repositório presente e instala o
+# commitlint do boleto-docs (npm ci, uma vez). O doctor mostra o estado do hook (ADR 0043).
+# Rode o install no checkout principal do boleto-docs, não num worktree.
+#
 # Nada aqui exige root, exceto instalar a libatomic no Linux (o script só avisa).
 #
 # Variável de ambiente BOLETO_DEV_HOME: instala tudo dentro desta pasta, isolado
@@ -363,6 +367,135 @@ repos_step() {
   done
 }
 
+# --- hook commit-msg (ADR 0043) ----------------------------------------------
+
+HOOK_MARK='# boleto-hook: commit-msg'
+
+# Diretório de hooks compartilhado (vale para os worktrees do repositório). Imprime o caminho.
+hook_dir() {
+  local d
+  d="$(git -C "$1" rev-parse --git-common-dir 2>/dev/null)" || return 1
+  case "$d" in /*) ;; *) d="$1/$d" ;; esac
+  printf '%s/hooks' "$d"
+}
+
+# Node do mise, no caminho absoluto. Vazio se ainda não estiver instalado.
+hook_node_path() {
+  local home=""
+  if [ -n "${MISE:-}" ]; then home="$("$MISE" where "node@$V_NODE_VERSION" 2>/dev/null || true)"; fi
+  if [ -n "$home" ] && [ -x "$home/bin/node" ]; then printf '%s/bin/node' "$home"; fi
+  return 0
+}
+
+# O texto do hook: cabeçalho gerado (caminhos entre aspas simples) e o corpo versionado.
+hook_text() {
+  local node
+  node="$(hook_node_path)"
+  printf '#!/bin/sh\n%s v1\n' "$HOOK_MARK"
+  printf '# Gerado pelo bootstrap (ADR 0043). Não edite: rode o install para atualizar.\n'
+  printf "BOLETO_DOCS_DIR='%s'\nBOLETO_NODE='%s'\n\n" "$REPO_ROOT" "$node"
+  tr -d '\r' < "$SCRIPT_DIR/hooks/commit-msg.sh"
+}
+
+hook_paths_ok() {
+  case "$REPO_ROOT$(hook_node_path)" in
+    *\'*|*$'\n'*) return 1 ;;
+  esac
+}
+
+commitlint_version_wanted() {
+  sed -n 's/.*"@commitlint\/cli": *"\([^"]*\)".*/\1/p' "$REPO_ROOT/package.json" | head -n 1 || true
+}
+
+commitlint_version_have() {
+  sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$REPO_ROOT/node_modules/@commitlint/cli/package.json" 2>/dev/null | head -n 1 || true
+}
+
+# Instala o commitlint do boleto-docs (versão e hashes do package-lock.json). Só usa rede se faltar.
+commitlint_deps() {
+  local want have
+  want="$(commitlint_version_wanted)"
+  have="$(commitlint_version_have)"
+  [ -n "$want" ] || die "@commitlint/cli não consta em $REPO_ROOT/package.json"
+  if [ "$want" = "$have" ]; then ok "commitlint $have já instalado (node_modules do boleto-docs)"; return 0; fi
+  if [ -z "${MISE:-}" ]; then fail "commitlint não instalado e o mise não foi encontrado"; return 0; fi
+  info "instalando o commitlint $want (npm ci, só desta vez)"
+  # Roda a partir da pasta do usuário: o mise.toml do projeto geraria avisos de confiança.
+  if (cd "$HOME" && "$MISE" exec "node@$V_NODE_VERSION" -- npm --prefix "$REPO_ROOT" ci --ignore-scripts --no-audit --no-fund >/dev/null); then
+    ok "commitlint $(commitlint_version_have) instalado (node_modules do boleto-docs)"
+  else
+    fail "npm ci falhou no boleto-docs. Confira a rede e rode o install de novo"
+  fi
+}
+
+# Grava o hook num repositório temporário e prova que recusa a mensagem inválida e aceita a válida.
+hook_selftest() {
+  local want="$1" t bad=0
+  t="$(mktemp -d)"
+  git init -q "$t" >/dev/null 2>&1
+  cp "$want" "$t/.git/hooks/commit-msg"
+  chmod +x "$t/.git/hooks/commit-msg"
+  local g=(git -C "$t" -c "core.hooksPath=$t/.git/hooks" -c user.name=hook-test -c user.email=hook-test@example.invalid -c commit.gpgsign=false)
+  if "${g[@]}" commit -q --allow-empty -m "mensagem invalida" >/dev/null 2>&1; then
+    fail "hook não recusa mensagem inválida (autoteste)"; bad=1
+  fi
+  if ! "${g[@]}" commit -q --allow-empty -m "chore: teste do hook" >/dev/null 2>&1; then
+    fail "hook recusa mensagem válida (autoteste)"; bad=1
+  fi
+  rm -rf "$t"
+  if [ "$bad" -eq 0 ]; then ok "autoteste: mensagem inválida recusada, válida aceita"; fi
+}
+
+# install: grava o hook em cada repositório presente. doctor: só lê e diagnostica.
+hooks_step() {
+  local mode="$1" r dir hdir hook hp want
+  step "Hook commit-msg (commitlint)"
+  if [ "$mode" = install ]; then
+    commitlint_deps
+  elif [ "$(commitlint_version_have)" = "$(commitlint_version_wanted)" ] && [ -n "$(commitlint_version_have)" ]; then
+    ok "commitlint $(commitlint_version_have) (node_modules do boleto-docs)"
+  else
+    fail "commitlint não instalado no boleto-docs. Rode: bootstrap/bootstrap.sh install"
+  fi
+  if ! hook_paths_ok; then
+    fail "o caminho do boleto-docs ou do Node tem aspas simples ou quebra de linha. Mude a pasta"
+    return 0
+  fi
+  want="$(mktemp)"
+  hook_text > "$want"
+  for r in $REPOS; do
+    dir="$WORKSPACE_DIR/$r"
+    if [ ! -d "$dir/.git" ]; then warn "$r: sem hook (repositório ausente)"; continue; fi
+    hp="$(git -C "$dir" config --get core.hooksPath 2>/dev/null || true)"
+    if [ -n "$hp" ]; then warn "$r: core.hooksPath=$hp (hook não gravado, o .git/hooks não é usado)"; continue; fi
+    if ! hdir="$(hook_dir "$dir")"; then fail "$r: não achei o diretório de hooks do Git"; continue; fi
+    hook="$hdir/commit-msg"
+    if [ -f "$hook" ] && ! grep -q "^$HOOK_MARK" "$hook"; then
+      warn "$r: commit-msg de outro autor (não sobrescrito)"; continue
+    fi
+    if [ -f "$hook" ] && [ -x "$hook" ] && cmp -s "$hook" "$want"; then
+      if [ "$mode" = install ]; then ok "$r: hook já ativo"; else ok "$r: hook ativo"; fi
+    elif [ "$mode" = install ]; then
+      mkdir -p "$hdir"
+      cp "$want" "$hook"
+      chmod +x "$hook"
+      ok "$r: hook instalado ou atualizado"
+    elif [ -f "$hook" ]; then
+      warn "$r: hook desatualizado. Rode: bootstrap/bootstrap.sh install"
+    else
+      fail "$r: hook não instalado. Rode: bootstrap/bootstrap.sh install"
+    fi
+    if [ "$mode" = doctor ] && [ "$r" != boleto-docs ] && [ -f "$dir/commitlint.config.mjs" ] \
+      && ! cmp -s <(tr -d '\r' < "$dir/commitlint.config.mjs") <(tr -d '\r' < "$REPO_ROOT/commitlint.config.mjs"); then
+      warn "$r: commitlint.config.mjs difere do boleto-docs (o hook usa o do boleto-docs, a CI usa o do repositório)"
+    fi
+  done
+  if [ "$mode" = doctor ] && [ -f "$REPO_ROOT/node_modules/@commitlint/cli/cli.js" ]; then
+    hook_selftest "$want"
+  fi
+  rm -f "$want"
+}
+
 doctor_tools() {
   step "Ferramentas do desenvolvedor"
   info "pasta de instalação: $BOLETO_HOME ($INSTALL_MODE)"
@@ -433,6 +566,8 @@ main() {
   setup_dirs
   case "$CMD" in
     install)
+      # O hook grava o caminho deste checkout, então o install não roda a partir de um worktree.
+      [ ! -f "$REPO_ROOT/.git" ] || die "rode o install no checkout principal do boleto-docs, não num worktree ($REPO_ROOT)"
       check_prereqs
       [ "$NEED_LIBATOMIC" -eq 0 ] || die "instale a libatomic e rode o install de novo (nada foi baixado)"
       install_mise
@@ -440,10 +575,12 @@ main() {
       shell_integration
       editor_extensions install
       repos_step
+      hooks_step install
       step "Verificação final"
       FAILS=0; WARNS=0
       check_prereqs
       doctor_tools
+      hooks_step doctor
       summary
       ;;
     doctor)
@@ -451,6 +588,7 @@ main() {
       doctor_tools
       editor_extensions doctor
       repos_step
+      hooks_step doctor
       summary
       ;;
   esac

@@ -58,6 +58,8 @@ bootstrap/bootstrap.sh             # Linux e macOS: instala
 bootstrap/bootstrap.sh doctor      # diagnostica, sem alterar nada
 ```
 
+O `install` também grava o hook Git `commit-msg` (commitlint) nos repositórios `boleto-docs`, `boleto-backend`, `boleto-migrations` e `boleto-frontend` que estiverem ao lado deste, inclusive para os worktrees. O `doctor` mostra o estado do hook.
+
 Veja [Ambiente do desenvolvedor](site/docs/guias/ambiente-do-dev.md) para as opções e os pontos de atenção.
 
 ## Compose de desenvolvimento
@@ -102,6 +104,7 @@ docker compose --profile docs up -d --wait docs   # http://localhost:3000/boleto
 Siga o [Padrão do projeto](site/docs/guias/padrao-do-projeto.md). Em resumo:
 
 - Commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/), por exemplo `feat(versions): atualiza Gradle para 9.9.2`. A CI valida as mensagens dos commits de cada PR.
+- O `bootstrap install` ativa a verificação da mensagem no commit (hook `commit-msg`, [ADR 0043](site/docs/adr/0043-hook-commit-msg.md)).
 - Trabalho em branch e PR. O PR só é integrado com todos os workflows verdes.
 - Antes de enviar, rode localmente as verificações da tabela "Antes de enviar" do padrão, inclusive `npx commitlint --from origin/main --to HEAD`.
 - Uma mudança em `versions.toml` gera uma nova tag.

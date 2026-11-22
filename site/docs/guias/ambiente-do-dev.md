@@ -44,7 +44,8 @@ O comando `install` (padrão) faz, em ordem:
    - **Windows:** `JAVA_HOME` e `PATH` do usuário, e a ativação do mise no perfil do PowerShell.
    - **Linux e macOS:** um bloco no `.bashrc`, `.profile` (e `.zshrc`) com o `PATH` e o `JAVA_HOME`.
 5. Instala as extensões no Kiro e no VS Code que forem encontrados (comandos `kiro` e `code` no PATH).
-6. Diagnostica o resultado.
+6. Instala o commitlint do `boleto-docs` (uma vez) e grava o [hook `commit-msg`](#hook-de-commit-commitlint) nos repositórios presentes.
+7. Diagnostica o resultado.
 
 O script é idempotente: rodar de novo não reinstala nem duplica configuração.
 
@@ -108,6 +109,20 @@ Regras:
 - Apagar a pasta desfaz a instalação das ferramentas. As variáveis do usuário (ou o bloco do shell) continuam lá até você rodar o `install` de novo.
 - `BOLETO_DEV_HOME` (modo isolado de testes) não pode ser combinado com `-InstallDir`.
 
+## Hook de commit (commitlint)
+
+O `install` grava um hook Git `commit-msg` em cada repositório que estiver ao lado do `boleto-docs` (`boleto-docs`, `boleto-backend`, `boleto-migrations` e `boleto-frontend`). No `git commit`, o hook roda o commitlint e recusa a mensagem que não seguir o [Conventional Commits](./commits-e-releases.md) ou que tiver linha com mais de 100 colunas. A decisão está no [ADR 0043](../adr/0043-hook-commit-msg.md).
+
+- **Worktrees.** O hook fica no diretório de hooks comum do repositório (`.git/hooks`), então vale também em `<repo>/.worktrees/<nome>`, sem passo extra.
+- **Sem rede.** O `install` instala o commitlint do `boleto-docs` uma vez (`npm ci --ignore-scripts`, versão e hashes do `package-lock.json`). Depois disso o hook não usa rede. Ele usa o Node do mise (caminho gravado no hook) e, se esse arquivo sumir, o `node` do PATH.
+- **Windows.** O Git executa o hook pelo `sh` do Git for Windows. Não é preciso instalar mais nada.
+- **Falha fechada.** Se faltar o Node, o commitlint ou a configuração, o commit é recusado com a mensagem `rode ... install`. Rode o `install` no checkout principal do `boleto-docs` e tente de novo.
+- **Reaplicar.** O `install` é idempotente e regrava o hook quando ele estiver ausente ou desatualizado. Rode-o de novo ao clonar um repositório novo ou ao mudar a pasta do `boleto-docs`. O `install` não roda a partir de um worktree do `boleto-docs`.
+- **Respeito ao que já existe.** O `install` não grava o hook se o repositório tiver `core.hooksPath` (o `.git/hooks` não seria usado) e não sobrescreve um `commit-msg` que não seja o do bootstrap. Nos dois casos mostra um aviso.
+- **Estado.** O `doctor` mostra o hook de cada repositório e faz um autoteste num repositório temporário: a mensagem inválida precisa ser recusada e a válida aceita.
+- **Pular o hook.** `git commit --no-verify` (ou `-n`) pula o `commit-msg`. O `doctor` não detecta isso. A barreira seguinte é o job `Conventional Commits` da CI, que reprova o PR com mensagem fora do padrão.
+
+Verificação rápida de uma série de commits, como a CI faz: `npx commitlint --from origin/main --to HEAD`.
 ## Diagnóstico: `doctor`
 
 ```powershell
@@ -130,6 +145,11 @@ O `doctor` não altera nada. Mostra `[ OK ]`, `[WARN]` ou `[FAIL]` para cada ite
 | Variáveis do usuário (com `-InstallDir`, Windows) | | não apontam para a pasta escolhida |
 | Extensões do editor | | ausentes |
 | Repositórios ao lado do `boleto-docs` | | ausentes |
+| commitlint no `node_modules` do `boleto-docs` | ausente ou em versão diferente do `package.json` | |
+| Hook `commit-msg` de cada repositório presente | não instalado | desatualizado, `core.hooksPath` definido ou `commit-msg` de outro autor |
+| Hook de um repositório ausente | | ausente |
+| `commitlint.config.mjs` dos outros repositórios | | difere do `boleto-docs` |
+| Autoteste do hook (repositório temporário) | recusa mensagem válida ou aceita inválida | |
 
 ## Pontos de atenção
 
@@ -147,6 +167,7 @@ A CI roda, no Ubuntu (com ShellCheck) e no Windows PowerShell 5.1:
 - `install` e `doctor` em pasta isolada;
 - `install` no local padrão e com pasta escolhida, gravando no ambiente do usuário (o runner é descartável), e a conferência em um terminal novo;
 - no Windows, a troca de pasta, conferindo que o `PATH` não guarda entradas da anterior nem duplicadas;
-- no Windows, os testes da lógica de `PATH` (`bootstrap/tests/path.tests.ps1`) no PowerShell 7 e no 5.1.
+- no Windows, os testes da lógica de `PATH` (`bootstrap/tests/path.tests.ps1`) no PowerShell 7 e no 5.1;
+- o hook `commit-msg`: ShellCheck de `bootstrap/hooks/commit-msg.sh` (`--shell=sh`), de `bootstrap/bootstrap.sh` e de `bootstrap/tests/hook.tests.sh`, e a sintaxe dos três scripts PowerShell. A CI cria repositórios de teste ao lado do checkout (`boleto-backend` com um commit e `boleto-frontend` vazio), roda o `install` e então `bootstrap/tests/hook.tests.sh` (Ubuntu) e `bootstrap/tests/hook.tests.ps1` (PowerShell 7 e 5.1, no Windows). Os cenários: mensagem inválida recusada, linha de corpo de 101 colunas recusada e de 100 aceita, repositório vazio, worktree, `install` repetido sem mudar o hook, `commit-msg` alheio, `core.hooksPath`, hook removido (o `doctor` sai com 1 e o `install` restaura), Node gravado inexistente e `--no-verify`. O autoteste do `doctor` também roda nos passos `install` e `doctor` e cobre o `sh` do Git for Windows no runner.
 
 Na criação, o fluxo Linux também foi testado em um Amazon Linux 2023 limpo, com usuário comum sem `sudo`.

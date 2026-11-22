@@ -53,3 +53,4 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0040](./0040-problem-details-e-catalogo-de-erros.md) | Problem Details e catálogo de erros | Aceito |
 | [0041](./0041-logs-json-com-traceid.md) | Logs JSON com `traceId` | Aceito |
 | [0042](./0042-v2-tenant-da-auditoria-da-empresa.md) | V2: tenant da auditoria da empresa gestora | Aceito |
+| [0043](./0043-hook-commit-msg.md) | Hook `commit-msg` com commitlint, instalado pelo bootstrap | Aceito |
