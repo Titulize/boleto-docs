@@ -15,7 +15,7 @@ Reúne o que é compartilhado entre `boleto-backend`, `boleto-frontend` e `bolet
 | Node e google-java-format no alvo `backend` da sincronização (tag `v0.5.0`) | `versions.toml`, `scripts/sync-versions.mjs` | pronto |
 | Serviço `backend` no Compose (API Spring Boot do repositório `boleto-backend`, sobe no `up` padrão desde o ADR 0035) | `docker-compose.yml`; guia em `site/docs/guias/compose-dev.md` | pronto (Task 7) |
 | Schema do banco, imagem de migração e testes de isolamento por tenant | repositório `boleto-migrations` (privado); guia em `site/docs/guias/migracoes.md` e modelo em `site/docs/arquitetura/modelo-de-dados.md` | pronto (Task 6, V1) |
-| Registro da base multi-tenant e auditoria do backend (contexto de tenant, Envers, Problem Details, logs JSON, V2 do schema) e ADRs 0036 a 0042 | `site/docs/progresso/task-08-base-multitenant-auditoria.md`, `site/docs/arquitetura/multitenancy-e-auditoria.md` e `site/docs/arquitetura/erros-da-api.md` | em andamento (Task 8, falta a demonstração) |
+| Registro da base multi-tenant e auditoria do backend (contexto de tenant, Envers, Problem Details, logs JSON, V2 do schema) e ADRs 0036 a 0042 | `site/docs/progresso/task-08-base-multitenant-auditoria.md`, `site/docs/arquitetura/multitenancy-e-auditoria.md` e `site/docs/arquitetura/erros-da-api.md` | concluída (Task 8) |
 | Padrão do projeto (regras e definição de pronto) | `site/docs/guias/padrao-do-projeto.md` | pronto |
 | Registro de progresso das tarefas | `site/docs/progresso/` | pronto |
 

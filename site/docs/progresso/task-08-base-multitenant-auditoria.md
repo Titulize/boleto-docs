@@ -5,7 +5,7 @@ title: 'Task 08: Base multi-tenant e auditoria'
 
 # Task 08: Base multi-tenant e auditoria
 
-- **Situação:** Em andamento (código e CI integrados; falta a demonstração em ambiente separado)
+- **Situação:** Concluída
 - **Início:** 2026-11-21
 - **Última atualização:** 2026-11-22
 - **Repositórios:** `boleto-docs`, `boleto-migrations`, `boleto-backend`
@@ -36,7 +36,9 @@ O backend passa a ter as entidades `EmpresaGestora` e `Usuario`, o isolamento po
 - Testes com o schema real: `TestcontainersConfiguration`, `SchemaRealTest`, `IsolamentoPorTenantTest`, `AuditoriaUsuarioTest`, `ProblemDetailsTest` e `LogsJsonTest`; regra `contextoTenantSoLigadoPeloAuth` no `ArquiteturaTest`.
 - `ci.yml` com a action do `boleto-migrations` fixada por SHA (`15444e6`), `AL2023_IMAGE` no cache de imagens e `MIGRATIONS_IMAGE` nos testes. README atualizado.
 
-`boleto-docs` (este PR): ADRs [0036](../adr/0036-schema-real-nos-testes-do-backend.md) a [0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md), ADR 0033 como "Substituído em parte pelo 0036", páginas de arquitetura (`multitenancy-e-auditoria`, `modulos-backend`, `modelo-de-dados`, `containers` e a nova [Erros da API](../arquitetura/erros-da-api.md)), guias (`migracoes`, `ambiente-do-dev`, `compose-dev`), notas nos registros dos Tasks 6 e 7, índice, README e `tasks.md`.
+`boleto-backend` (PR [#6](https://github.com/Titulize/boleto-backend/pull/6), squash `946d3ca`): o `AuditoriaUsuarioTest` passou a imprimir também o tenant de origem, que a demonstração exige.
+
+`boleto-docs` (PR [#15](https://github.com/Titulize/boleto-docs/pull/15) e o PR de fechamento): ADRs [0036](../adr/0036-schema-real-nos-testes-do-backend.md) a [0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md), ADR 0033 como "Substituído em parte pelo 0036", páginas de arquitetura (`multitenancy-e-auditoria`, `modulos-backend`, `modelo-de-dados`, `containers` e a nova [Erros da API](../arquitetura/erros-da-api.md)), guias (`migracoes`, `ambiente-do-dev`, `compose-dev`), notas nos registros dos Tasks 6 e 7, índice, README e `tasks.md`.
 
 Sem mudança no `versions.toml`: as duas dependências novas vêm do BOM do Spring Boot, que já está fixado lá. Não há tag nova.
 
@@ -62,8 +64,24 @@ Backend, registrado nas mensagens dos commits do PR #4 (execução local no Wind
 | Shell, versões, commits | ShellCheck dos `.sh`, `sync-versions check --remote`, `commitlint` | passaram |
 | Imagem da action | `docker build` local da mesma linha que a action usa | passou |
 
-### Workflows
+### Demonstração
 
+Executada em 2026-11-22 (horário UTC dos registros) a partir do `boleto-backend` na `main` em `946d3ca`, com `gradlew spotlessCheck check`: 38 testes, 0 falhas, `BUILD SUCCESSFUL`. A demonstração é o `AuditoriaUsuarioTest`, que altera um usuário em três transações (criar, renomear, inativar) e consulta a revisão com o diff. Para rodar só ele: `.\gradlew.bat test --tests '*AuditoriaUsuarioTest' -i`. O teste sobe o PostgreSQL e a imagem de migração (V1 e V2) em Testcontainers, sem usar o Compose do desenvolvedor.
+
+Saída resumida (UUIDs abreviados; os valores mudam a cada execução):
+
+```
+rev | revisão | usuário  | tenant efetivo | tenant de origem | horário                  | campo    | anterior    | novo
+52  | ADD     | 71eff8a0 | 4b3819c2       | -                | 2026-11-22T01:04:21.340Z | nome     | null        | Maria Silva
+52  | ADD     | 71eff8a0 | 4b3819c2       | -                | 2026-11-22T01:04:21.340Z | email    | null        | maria@exemplo.test
+52  | ADD     | 71eff8a0 | 4b3819c2       | -                | 2026-11-22T01:04:21.340Z | situacao | null        | CONVIDADO
+53  | MOD     | 71eff8a0 | 4b3819c2       | -                | 2026-11-22T01:04:21.406Z | nome     | Maria Silva | Maria Souza
+54  | MOD     | 71eff8a0 | 4b3819c2       | -                | 2026-11-22T01:04:21.422Z | situacao | CONVIDADO   | INATIVO
+```
+
+`-` em "tenant de origem" quer dizer que a origem é igual ao tenant efetivo (a revisão grava `null`). Renomear para o mesmo nome não gerou revisão. No caso em que a plataforma atua em outra empresa, o teste imprime a revisão `ADD` com o tenant de origem da plataforma e o tenant efetivo da empresa atendida.
+
+### Workflows
 | Repositório | Workflow | Evento | Run | Resultado |
 |---|---|---|---|---|
 | `boleto-migrations` | CI (`Conventional Commits` e `Lint, imagem e testes de isolamento (PostgreSQL real)`) | PR #4 | [44963756044](https://github.com/Titulize/boleto-migrations/actions/runs/44963756044) | verde |
@@ -74,13 +92,15 @@ Backend, registrado nas mensagens dos commits do PR #4 (execução local no Wind
 | `boleto-backend` | CI | PR #4, commit `c21f9d8` | [44967444709](https://github.com/Titulize/boleto-backend/actions/runs/44967444709) | cancelado pelo `push --force-with-lease` |
 | `boleto-backend` | CI (`Conventional Commits` e `Build, testes, Spotless, Jacoco e imagem`) | PR #4, commit `3e79b40` | [44967471979](https://github.com/Titulize/boleto-backend/actions/runs/44967471979) | verde |
 | `boleto-backend` | CI (o job de commits só roda em PR e foi pulado) | `main` depois do squash `77b6967` | [44967834278](https://github.com/Titulize/boleto-backend/actions/runs/44967834278) | verde |
+| `boleto-backend` | CI (`Conventional Commits` e `Build, testes, Spotless, Jacoco e imagem`) | PR #6 | [44969805329](https://github.com/Titulize/boleto-backend/actions/runs/44969805329) | verde |
+| `boleto-backend` | CI | `main` depois do squash `946d3ca` | [44970111738](https://github.com/Titulize/boleto-backend/actions/runs/44970111738) | verde |
 
 No run `44967471979`, a action do `boleto-migrations` foi resolvida no runner sem token e a imagem foi usada pelos testes. Os workflows do PR do `boleto-docs` (este) e da `main` depois dele constam no relatório final da tarefa: citá-los aqui exigiria outro PR.
 
 ### O que não foi verificado
 
-- **A demonstração do plano (item 11).** Não foi executada: não existe `.agents/tasks/task-08/demo.md`. Faltam a tabela do diff salva a partir do `AuditoriaUsuarioTest -i` e a subida do Compose em outro projeto (`boleto-t08`) com a V2 aplicada pelo `flyway`, `/actuator/health` com `db` `UP` (prova do `validate` contra o schema real fora do Testcontainers) e uma linha de log JSON lida no `docker compose logs`.
-- **A suíte do backend e as verificações do `boleto-migrations` na máquina de quem escreveu este registro.** Os números de testes e de cobertura vêm das mensagens dos commits. A CI do PR #4 do backend e as dos PRs do `boleto-migrations` repetiram os testes e passaram. O revisor do código também não reexecutou as suítes.
+- **A demonstração em Compose (`-p boleto-t08`).** Não foi executada: a demonstração é o teste de integração, que já roda a V1 e a V2 em um PostgreSQL real e sobe o contexto com `ddl-auto=validate`. Ficam sem prova fora do Testcontainers o `/actuator/health` com `db` `UP` e uma linha de log JSON lida de `docker compose logs`.
+- **A suíte do backend e as verificações do `boleto-migrations` na máquina de quem escreveu este registro, antes da demonstração.** Os números de testes e de cobertura vêm das mensagens dos commits. A CI do PR #4 do backend e as dos PRs do `boleto-migrations` repetiram os testes e passaram. O revisor do código também não reexecutou as suítes.
 - **O comando `docker compose logs --no-log-prefix backend | jq -R 'fromjson? // .'`** do guia do Compose não foi executado contra uma imagem com logs JSON. O `boleto-dev` do desenvolvedor roda uma imagem anterior ao Task 8 (texto) e não foi tocado.
 - A V2 não foi aplicada no `boleto-dev` (chega no próximo `up -d --build`).
 - `gh secret list` foi bloqueado pelo ambiente. A action roda sem token e nenhum segredo foi criado, mas não se sabe se já existia algum no repositório.
@@ -98,6 +118,8 @@ No run `44967471979`, a action do `boleto-migrations` foi resolvida no runner se
 - **Revisão da primeira passada do backend** (commit `d03bd4b`): o log do Hibernate trazia `Key (email)=(...)` na violação de unicidade, e um `LOG.debug` registrava a exceção completa. O `SqlExceptionHelper` ficou em `OFF`, o `debug` saiu, o `ProblemDetailsTest` ganhou o caso do conflito de e-mail com `CapturedOutput`, e o teste do tenant diferente do contexto passou a exigir `DataAccessException`. O custo está no [ADR 0041](../adr/0041-logs-json-com-traceid.md).
 - **Run `44966545393` do backend falhou:** a task `construirImagemMigracoes` não achou `../boleto-migrations` no runner. A correção foi a composite action do PR #5 do `boleto-migrations` e o `ci.yml` com o SHA dela (commit `3e79b40`).
 - **`commitlint` reprovou o commit `fix(ci)`** por uma linha do corpo com mais de 100 colunas. O push foi feito antes de ler o resultado local. O commit foi corrigido com `git commit --amend` e `git push --force-with-lease`, só na branch do PR, e isso cancelou o run `44967444709`.
+- **Demonstração, primeira tentativa:** a tabela do teste imprimia só o tenant efetivo, sem o de origem que a demonstração exige. O PR #6 do backend acrescentou a coluna e imprime também o caso da plataforma.
+- **PR #5 do backend (fechado):** o commit dessa mudança foi enviado com uma linha de corpo acima de 100 colunas e com a contagem de testes errada (45 em vez de 38). O `commitlint` local reprovou depois do push. Sem `push --force`, o PR #5 foi fechado e a branch apagada, e o mesmo conteúdo foi reenviado no PR #6 com a mensagem corrigida.
 - **Limpeza:** `git worktree remove` do backend falhou com "Permission denied". O git já não lista o worktree e a branch local foi apagada, mas a pasta vazia `boleto-backend/.worktrees/task-08` continua, presa por outro processo. Não afeta nenhum arquivo.
 - **Branches remotas que sobraram no `boleto-migrations`:** `feat/acao-imagem-migracoes` (do PR #5, já integrado). Junto dela seguem `docs/compose-up-completo` e `docs/task-06-fechamento`, de tarefas anteriores.
 
@@ -111,7 +133,6 @@ No run `44967471979`, a action do `boleto-migrations` foi resolvida no runner se
 
 ## Pendências
 
-- **Demonstração em ambiente separado** (item 11 do plano): salvar a tabela do diff do `AuditoriaUsuarioTest` e subir o Compose num projeto separado. A tarefa só será marcada como concluída depois dela.
 - **Task 9:** ligar o `ContextoTenant` ao JWT validado (único chamador autorizado), propagar o contexto onde houver `@Async` ou threads virtuais, repetir o teste do `X-Tenant-Id` em controller real, auditar `perfil*` e `usuario_perfil`.
 - **Tarefa do "Cadastro de Telas":** migração com `tela_aud` e gatilho, entidade `Tela` e testes ([ADR 0039](../adr/0039-auditoria-do-catalogo-tela.md)).
 - **Task 10:** CPF (dado pessoal) e sua proteção.
@@ -127,3 +148,4 @@ No run `44967471979`, a action do `boleto-migrations` foi resolvida no runner se
 | 2026-11-21 | V2 e teste no `boleto-migrations` (PR #4) |
 | 2026-11-22 | Composite action no `boleto-migrations` (PR #5) e base multi-tenant no `boleto-backend` (PR #4) integradas |
 | 2026-11-22 | ADRs 0036 a 0042, arquitetura, guias e este registro; Task 8 segue em andamento até a demonstração |
+| 2026-11-22 | Demonstração executada (`AuditoriaUsuarioTest`), PR #6 do backend e Task 8 concluída |
