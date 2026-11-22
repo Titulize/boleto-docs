@@ -10,7 +10,7 @@ title: Multi-tenancy e auditoria
 Todas as tabelas de negócio têm `tenant_id`. O isolamento tem duas camadas:
 
 1. **Hibernate**: `@TenantId` filtra e preenche o `tenant_id` nas consultas e gravações.
-2. **PostgreSQL**: Row-Level Security. A cada transação o backend executa `SET LOCAL app.tenant_id = '<id>'`, e as políticas só liberam linhas desse tenant.
+2. **PostgreSQL**: Row-Level Security. A cada transação o backend grava `app.tenant_id` e `app.tenant_origem_id` com escopo local à transação (`set_config(..., true)`, o equivalente do `SET LOCAL` com parâmetro de bind), e as políticas só liberam linhas desse tenant.
 
 A segunda camada protege contra bugs na aplicação. A role usada pelo backend não tem `BYPASSRLS`.
 
@@ -21,9 +21,9 @@ sequenceDiagram
   participant P as PostgreSQL
 
   C->>B: requisição com JWT (tenant_id no token)
-  B->>B: valida token e resolve o tenant
+  B->>B: valida token e liga o ContextoTenant (Task 9)
   B->>P: BEGIN
-  B->>P: SET LOCAL app.tenant_id = ...
+  B->>P: select set_config('app.tenant_id', ..., true)
   B->>P: SELECT ... (RLS filtra por tenant)
   P-->>B: apenas linhas do tenant
   B->>P: COMMIT
@@ -32,7 +32,7 @@ sequenceDiagram
 
 ### Tenant efetivo e tenant de origem
 
-O admin da plataforma (a empresa gestora marcada como `plataforma`, a Titulize) pode assumir outra empresa pela barra superior. A aplicação define duas variáveis por transação: `app.tenant_id` (a empresa escolhida, o tenant efetivo) e `app.tenant_origem_id` (a empresa do admin). O RLS filtra pelo efetivo. A busca de empresas e o `INSERT` de empresa só valem quando a origem é a plataforma. A revisão de auditoria grava os dois. Sem `app.tenant_id` a política devolve nenhuma linha (falha fechada), e um UUID inválido dá erro. As funções `boleto.tenant_atual()` e `boleto.tenant_origem_atual()` leem as duas variáveis, e `boleto.eh_plataforma(uuid)` diz se uma empresa é a da plataforma. `app.tenant_origem_id` é uma variável de sessão que a `boleto_app` consegue alterar: o backend (Task 8) só a define a partir do JWT validado ([ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md)). O isolamento entre empresas comuns depende só de `app.tenant_id`. Detalhes no [ADR 0025](../adr/0025-modelo-de-dados-v1.md) e no [ADR 0029](../adr/0029-permissao-por-tela.md).
+O admin da plataforma (a empresa gestora marcada como `plataforma`, a Titulize) pode assumir outra empresa pela barra superior. A aplicação define duas variáveis por transação: `app.tenant_id` (a empresa escolhida, o tenant efetivo) e `app.tenant_origem_id` (a empresa do admin). O RLS filtra pelo efetivo. A busca de empresas e o `INSERT` de empresa só valem quando a origem é a plataforma. A revisão de auditoria grava os dois. Sem `app.tenant_id` a política devolve nenhuma linha (falha fechada), e um UUID inválido dá erro. As funções `boleto.tenant_atual()` e `boleto.tenant_origem_atual()` leem as duas variáveis, e `boleto.eh_plataforma(uuid)` diz se uma empresa é a da plataforma. `app.tenant_origem_id` é uma variável de sessão que a `boleto_app` consegue alterar: o backend só a define a partir do `ContextoTenant`, que o Task 9 liga ao JWT validado ([ADR 0030](../adr/0030-manutencao-de-dados-e-origem-do-tenant.md)). O isolamento entre empresas comuns depende só de `app.tenant_id`. Detalhes no [ADR 0025](../adr/0025-modelo-de-dados-v1.md) e no [ADR 0029](../adr/0029-permissao-por-tela.md).
 
 ### Roles e resolução do tenant antes do login
 
@@ -49,4 +49,30 @@ O Hibernate Envers grava, na mesma transação da alteração, o estado anterior
 
 As tabelas de auditoria (`revinfo` e uma `<tabela>_aud` por entidade auditada) também são criadas pelo `boleto-migrations` e também têm RLS. A aplicação só consegue `SELECT` e `INSERT` nelas.
 
-O desenho das tabelas está em [Modelo de dados](./modelo-de-dados.md). O evinfo usa a sequence evinfo_seq com incremento 50, como o Hibernate 7 espera. O Task 8 confirma isso com ddl-auto=validate.
+O desenho das tabelas está em [Modelo de dados](./modelo-de-dados.md). A `revinfo` usa a sequence `revinfo_seq` com incremento 50, como o Hibernate 7 espera, e o `ddl-auto=validate` do backend a confirma contra o schema real ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)).
+
+## Como o backend implementa (Task 8)
+
+### Contexto de tenant
+
+O `ContextoTenant` (`shared.tenant`) guarda `tenantId` (efetivo), `tenantOrigemId` e `usuarioId` num `ScopedValue`. Só código do servidor o liga: hoje, os testes. Depois do Task 9, só o módulo `auth` (regra `contextoTenantSoLigadoPeloAuth` do ArchUnit). Nenhum controller, filtro ou cabeçalho lê tenant ou usuário do cliente, e o `X-Tenant-Id` é ignorado. Decisão no [ADR 0037](../adr/0037-contexto-de-tenant-por-transacao.md).
+
+| Peça | O que faz |
+|---|---|
+| `TenantIdResolver` | Entrega o tenant ao `@TenantId` do Hibernate. Sem contexto, lança `ContextoTenantAusenteException` e a sessão não abre |
+| `TenantJpaDialect` | Logo depois do `begin`, executa `select set_config('app.tenant_id', ?, true), set_config('app.tenant_origem_id', ?, true)` |
+| `TenantConfig` | Troca o dialeto do `JpaTransactionManager` por um `BeanPostProcessor` |
+
+O valor com escopo local some no commit e no rollback, então não vaza entre conexões do pool. Fora de uma transação o banco devolve 0 linhas. O `@TenantId` está em `Usuario`. A `EmpresaGestora` não tem `@TenantId` (o `id` dela é o tenant), e o isolamento dela é só a RLS.
+
+Limites conhecidos: `@Async` e threads virtuais não herdam o `ScopedValue` e falham fechado; não há teste de `REQUIRES_NEW` com outro contexto nem de transação `readOnly`.
+
+### Revisão e diff
+
+A `RevisaoAuditoria` (`revinfo`) e o `RevisaoAuditoriaListener` ficam no módulo `auditoria`. O listener lê o `ContextoTenant` e grava usuário, tenant efetivo e o tenant de origem (só quando difere do efetivo). Sem contexto, a escrita auditada falha. `EmpresaGestora` e `Usuario` são auditadas. `criado_em`, `atualizado_em` e `versao` são `@NotAudited`, e `senha_hash` não é mapeada. O `tenant_id` da `empresa_gestora_aud` vem de um gatilho da migração V2 ([ADR 0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md)).
+
+`ConsultaAuditoria.historico(Class, id)` devolve as revisões com o diff (`campo`, `anterior`, `novo`), calculado por reflexão entre retratos consecutivos ([ADR 0038](../adr/0038-auditoria-com-envers.md)). É só serviço: não há endpoint antes da autenticação. A auditoria do catálogo `tela` está decidida e fica para a tarefa do Cadastro de Telas ([ADR 0039](../adr/0039-auditoria-do-catalogo-tela.md)).
+
+### Erros e logs
+
+Os erros saem em Problem Details com `codigo` e `traceId` ([Erros da API](./erros-da-api.md), [ADR 0040](../adr/0040-problem-details-e-catalogo-de-erros.md)). Os logs saem em JSON com o mesmo `traceId` ([ADR 0041](../adr/0041-logs-json-com-traceid.md)).

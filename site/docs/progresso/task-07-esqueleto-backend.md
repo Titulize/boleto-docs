@@ -108,7 +108,7 @@ Não verificado:
 - A demonstração usou `-p boleto-demo` em vez do `boleto-t07` do plano.
 ## Pendências
 - Nenhuma pendência do Task 7.
-- Para outros tasks: Valkey, Lettuce e Bucket4j no Task 9; schema nos testes do backend no Task 8; smoke de migração mais backend na CI e verificação de dependências do Gradle no Task 14.
+- Para outros tasks: Valkey, Lettuce e Bucket4j no Task 9; schema nos testes do backend no Task 8 (feito: [ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)); smoke de migração mais backend na CI e verificação de dependências do Gradle no Task 14.
 ## Nota posterior (2026-11-22): `backend` sem profile
 
 Este registro descreve o estado da época e não foi reescrito. O [ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md) tirou o `backend` e o `flyway` dos profiles: `docker compose up -d` sobe tudo, `up -d --build` reconstrói depois de mudar código, `down` derruba tudo e mantém os dados, `down -v` apaga os dados. O comando `docker compose --profile backend up -d --build --wait` deixou de existir. Demonstrado no projeto `boleto-t35` (portas `25435`, `26381`, `21027`, `28027` e `18081`, sem tocar o `boleto-dev`): o `up -d` subiu os cinco serviços, `actuator/health` respondeu `UP`, `up -d --wait` saiu 0 em 23 s, `down` manteve os volumes e `down -v` os removeu. A CI do `boleto-docs` sobe só `postgres valkey mailpit`, porque não acessa os repositórios privados.
@@ -122,3 +122,4 @@ Este registro descreve o estado da época e não foi reescrito. O [ADR 0035](../
 | 2026-11-21 | PR #12 do `boleto-docs` integrado (correção do `tasks.md` e do registro) |
 | 2026-11-22 | PR #2 do `boleto-backend` (README, `f4e68cf`) integrado; Task 7 concluída |
 | 2026-11-22 | Nota: o `up` padrão passou a subir a aplicação inteira, sem profile ([ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)) |
+| 2026-11-22 | Pendência do schema nos testes fechada pelo Task 8 ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)) |

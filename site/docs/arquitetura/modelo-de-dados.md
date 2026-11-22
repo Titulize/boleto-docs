@@ -5,7 +5,7 @@ title: Modelo de dados (V1)
 
 # Modelo de dados (V1)
 
-Schema `boleto`, criado pela migração `V1__schema_inicial.sql` do `boleto-migrations`. As decisões estão nos [ADR 0025](../adr/0025-modelo-de-dados-v1.md), [ADR 0026](../adr/0026-roles-e-rls.md) e [ADR 0029](../adr/0029-permissao-por-tela.md). O Task 8 mapeia estas tabelas em entidades.
+Schema `boleto`, criado pela migração `V1__schema_inicial.sql` do `boleto-migrations` e ajustado pela `V2__auditoria_empresa_gestora_tenant.sql`. As decisões estão nos [ADR 0025](../adr/0025-modelo-de-dados-v1.md), [ADR 0026](../adr/0026-roles-e-rls.md) e [ADR 0029](../adr/0029-permissao-por-tela.md). O Task 8 mapeia estas tabelas em entidades.
 
 ```mermaid
 erDiagram
@@ -45,7 +45,9 @@ erDiagram
 | `revinfo` | Revisão do Envers: `rev` (sequence `revinfo_seq`, incremento 50), `revtstmp` (epoch em ms), `usuario_id`, `tenant_id` (efetivo) e `tenant_origem_id` (preenchido quando o admin da plataforma atua em outra empresa) |
 | `*_aud` | `empresa_gestora_aud`, `usuario_aud` (sem `senha_hash`), `perfil_aud`, `perfil_tela_permissao_aud`, `usuario_perfil_aud`. `rev`, `revtype` (0, 1 ou 2) e as colunas da entidade. A aplicação só faz `SELECT` e `INSERT` |
 
-O catálogo `tela` não é auditado pelo Envers na V1: ele muda só por migração, que o `flyway_schema_history` registra. A reorganização de nome, menu e ordem pela tela "Cadastro de Telas" fica fora da auditoria até o Task 8 decidir.
+O catálogo `tela` não é auditado pelo Envers na V1 nem na V2: ele muda só por migração, que o `flyway_schema_history` registra. O [ADR 0039](../adr/0039-auditoria-do-catalogo-tela.md) decidiu auditar nome, menu e ordem numa `tela_aud`, criada junto com a entidade `Tela` na tarefa do "Cadastro de Telas". Até lá, a reorganização pela tela fica fora da auditoria.
+
+**V2 (`V2__auditoria_empresa_gestora_tenant.sql`).** A `empresa_gestora` não tem `tenant_id` (o `id` é o tenant), e a `empresa_gestora_aud.tenant_id` é `NOT NULL`. Um gatilho `BEFORE INSERT` em `empresa_gestora_aud` faz `tenant_id := id`, porque o Envers não consegue preencher a coluna ([ADR 0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md)). A `revinfo_seq` com incremento 50 e o `revtype smallint` foram conferidos pelo backend com `ddl-auto=validate` contra o schema real ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)).
 
 ## Dados da V1
 

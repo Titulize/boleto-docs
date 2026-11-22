@@ -113,6 +113,13 @@ docker compose ps
 - O health mostra `status` e `components` (`db`, `diskSpace`, `ping`, liveness e readiness), sem `details`. O `db` fica `UP` só se a conexão como `boleto_app` funcionar.
 - O Swagger só existe porque o Compose liga `SPRINGDOC_API_DOCS_ENABLED` e `SPRINGDOC_SWAGGER_UI_ENABLED`. A imagem sem essas variáveis não o serve.
 - O processo roda com o usuário `10001`: `docker compose exec backend id -u`.
+- Desde o Task 8 o backend escreve logs em JSON (uma linha por evento, com `traceId`; [ADR 0041](../adr/0041-logs-json-com-traceid.md)). Sem o prefixo do Compose, o `jq` lê a saída; `fromjson?` deixa passar linhas que não sejam JSON:
+  ```bash
+  docker compose logs --no-log-prefix backend | jq -R 'fromjson? // .'
+  ```
+  Esse comando depende da imagem do backend reconstruída com `docker compose up -d --build`. A imagem construída antes do Task 8 escreve texto.
+- Erros da API saem em Problem Details com `codigo` e `traceId` ([Erros da API](../arquitetura/erros-da-api.md)). O `traceId` do corpo é o mesmo do cabeçalho `X-Trace-Id` e do log.
+- O Compose sobe o PostgreSQL com a migração já aplicada, então a V2 do `boleto-migrations` chega com o `up -d --build`, sem apagar dados.
 - O backend não depende do Valkey. O Valkey sobe junto porque faz parte da infraestrutura, mas o backend só o usa a partir do Task 9.
 
 ### Em worktree do git

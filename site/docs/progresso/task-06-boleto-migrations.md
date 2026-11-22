@@ -123,11 +123,16 @@ Verificação do PR #2 do `boleto-migrations`, no worktree dele: `bash tests/neg
 
 Nada pendente deste Task. O que segue pertence a outras tarefas:
 
-- Task 8: definir `app.tenant_id` e `app.tenant_origem_id` só a partir do JWT validado; confirmar `revinfo_seq` (incremento 50) com `ddl-auto=validate`; decidir a auditoria do catálogo `tela` (nome, menu e ordem).
+- ~~Task 8: definir `app.tenant_id` e `app.tenant_origem_id` só a partir do JWT validado; confirmar `revinfo_seq` (incremento 50) com `ddl-auto=validate`; decidir a auditoria do catálogo `tela` (nome, menu e ordem).~~ **Fechado pelo [Task 8](./task-08-base-multitenant-auditoria.md)**, com duas partes que seguem para outras tarefas:
+  - `revinfo_seq` com incremento 50 e `revtype smallint`: confirmados com `ddl-auto=validate` contra o schema real nos testes do backend (`SchemaRealTest` e a suíte, que passaram na CI do PR #4 do `boleto-backend`). Nenhuma correção na V1 ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md), [ADR 0038](../adr/0038-auditoria-com-envers.md)).
+  - `app.tenant_id` e `app.tenant_origem_id`: o backend só os define a partir do `ContextoTenant`, que só código do servidor liga, e só em cada transação ([ADR 0037](../adr/0037-contexto-de-tenant-por-transacao.md)). **Ainda falta ligar o `ContextoTenant` ao JWT validado: é o Task 9.**
+  - Auditoria do catálogo `tela`: **decidida** (auditar nome, menu e ordem em `tela_aud`, [ADR 0039](../adr/0039-auditoria-do-catalogo-tela.md)). A tabela e a entidade nascem com a tela "Cadastro de Telas", e até lá a reorganização segue sem auditoria.
 - Task 12 em diante (frontend): a barra de administração para assumir empresa. O banco já tem o suporte.
 - Task 14: publicar a imagem de migração (multi-arquitetura, x64 e Graviton) e encadear migração, backend e frontend no pipeline. A CI do `boleto-migrations` roda só em x64, e o build multi-arquitetura não foi verificado.
 
 Não verificado no fechamento: o código de saída do `compose run ... tests` local (a CI repetiu e passou), a exclusão da branch remota `docs/task-06-fechamento` do `boleto-migrations` e o link do ADR 0030 no README dele.
+
+Conferido em 2026-11-22, no Task 8: o link do ADR 0030 no README do `boleto-migrations` aponta para o arquivo existente na `main` do `boleto-docs` (`gh api` no README e nas branches). **A branch remota `docs/task-06-fechamento` não foi excluída:** continua no `boleto-migrations` junto com `docs/compose-up-completo` e `feat/acao-imagem-migracoes` (também já integradas por squash). Excluí-las fica a critério do mantenedor. O código de saída local do `compose run ... tests` segue sem registro do Task 6, e a CI o repetiu e passou.
 
 ## Nota posterior (2026-11-22): `flyway` sem profile
 
@@ -142,3 +147,4 @@ Este registro descreve o estado da época e não foi reescrito. O [ADR 0035](../
 | 2026-11-21 | Parte C: documentação final, ADR 0030, modelo de dados e guia de migrações |
 | 2026-11-22 | Fechamento: README e `negativos.sh` do `boleto-migrations` (PR #2), guia de migrações e Task 6 concluída |
 | 2026-11-22 | Nota: o `up` padrão passou a subir a aplicação inteira, sem profile ([ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)) |
+| 2026-11-22 | Pendências fechadas pelo Task 8 (ver "Pendências"): schema confirmado, auditoria de `tela` decidida, JWT segue no Task 9 |

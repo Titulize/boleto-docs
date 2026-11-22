@@ -16,7 +16,7 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | [05](./task-05-compose-dev.md) | Compose de desenvolvimento (infraestrutura) | Concluída | 2026-11-22 |
 | [06](./task-06-boleto-migrations.md) | Repositório `boleto-migrations` (Flyway) | Concluída | 2026-11-22 |
 | [07](./task-07-esqueleto-backend.md) | Esqueleto do backend | Concluída | 2026-11-22 |
-| 08 | Base multi-tenant e auditoria | Não iniciada | |
+| [08](./task-08-base-multitenant-auditoria.md) | Base multi-tenant e auditoria | Em andamento (falta a demonstração) | 2026-11-22 |
 | 09 | Autenticação e autorização | Não iniciada | |
 | 10 | Convite de usuário e "esqueci minha senha" | Não iniciada | |
 | 11 | Observabilidade local | Não iniciada | |
@@ -26,3 +26,5 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | 15 | Documentação final e validação do onboarding | Não iniciada | |
 
 **Nota (2026-11-22):** o `docker compose up -d` passou a subir a aplicação inteira (infraestrutura, migração e backend), sem profile ([ADR 0035](../adr/0035-compose-sobe-a-aplicacao-inteira.md)). As notas posteriores estão nos registros dos Tasks [5](./task-05-compose-dev.md), [6](./task-06-boleto-migrations.md) e [7](./task-07-esqueleto-backend.md).
+
+**Nota (2026-11-22):** o Task 8 entregou a base multi-tenant e a auditoria no backend, a V2 no `boleto-migrations` e os [ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md) a [0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md). As pendências dos Tasks 6 e 7 que dependiam dele foram fechadas nos registros respectivos.
