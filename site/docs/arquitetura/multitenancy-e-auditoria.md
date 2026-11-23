@@ -38,6 +38,10 @@ O admin da plataforma (a empresa gestora marcada como `plataforma`, a Titulize) 
 
 Três roles dividem o trabalho: `boleto_owner` (dona dos objetos, com `FORCE ROW LEVEL SECURITY`), `boleto_app` (a do backend, só DML, sem `BYPASSRLS`) e `boleto_funcoes` (dona das funções de resolução). Antes do login ainda não há tenant ativo. O backend chama funções `SECURITY DEFINER` (`resolver_tenant_por_email`, `resolver_tenant_por_token`) que devolvem só o `tenant_id` (o token chega como hash SHA-256 em `bytea`), e a partir daí define `app.tenant_id`. A `buscar_empresas_gestoras(termo, limite)` alimenta a barra do admin e só devolve linhas quando a origem é a plataforma. É o caminho administrativo explícito do [ADR 0008](../adr/0008-multitenancy.md), com leitura limitada às colunas necessárias. Ver [ADR 0026](../adr/0026-roles-e-rls.md).
 
+### De onde vem o contexto (Task 9)
+
+O `ContextoTenant` é ligado por um filtro do módulo `auth` depois da validação do JWT, com `tid`, `tor` e `sub`. Cabeçalhos como `X-Tenant-Id` são ignorados. Assumir outra empresa é `POST /auth/assumir-empresa`, que emite um novo access token com `tid` diferente de `tor`. Threads novas não herdam o contexto: o executor `executorComContexto` o religa ([ADR 0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md), [Autenticação](./autenticacao.md)).
+
 ## Trilha de auditoria
 
 O Hibernate Envers grava, na mesma transação da alteração, o estado anterior e o novo de cada entidade auditada. Cada revisão registra:
@@ -48,6 +52,8 @@ O Hibernate Envers grava, na mesma transação da alteração, o estado anterior
 - valores anteriores e novos, de onde se calcula o diff mostrado na tela.
 
 As tabelas de auditoria (`revinfo` e uma `<tabela>_aud` por entidade auditada) também são criadas pelo `boleto-migrations` e também têm RLS. A aplicação só consegue `SELECT` e `INSERT` nelas.
+
+A partir do Task 9, `perfil`, `perfil_tela_permissao` e `usuario_perfil` também são `@Audited` no backend (as tabelas `_aud` já existem na V1). A senha continua fora da auditoria. O usuário de sistema `00000000-0000-7000-8000-0000000000ff` grava as revisões do administrador inicial ([ADR 0049](../adr/0049-administrador-inicial.md)).
 
 O desenho das tabelas está em [Modelo de dados](./modelo-de-dados.md). A `revinfo` usa a sequence `revinfo_seq` com incremento 50, como o Hibernate 7 espera, e o `ddl-auto=validate` do backend a confirma contra o schema real ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)).
 

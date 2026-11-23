@@ -53,6 +53,8 @@ Depois de instalar, **abra um novo terminal** e reinicie o Kiro ou o VS Code, pa
 
 Próximo passo: subir a aplicação inteira (infraestrutura, migração e backend) com `docker compose up -d` na raiz do `boleto-docs` (veja [Compose de desenvolvimento](./compose-dev.md)). O comando precisa do `boleto-backend` e do `boleto-migrations` ao lado do `boleto-docs` (`-Clone` ou `--clone` os clona). Sem eles, o Compose para com `unable to prepare context: path ... not found`; para subir só a infraestrutura, use `docker compose up -d --wait postgres valkey mailpit`.
 
+O `docker compose up -d` cria o administrador de desenvolvimento (`admin@boleto.test`, senha padrão no `docker-compose.yml`) e liga a chave JWT efêmera; para trocar, use o `.env` (modelo em `.env.example`). Os testes do backend também sobem um Valkey por Testcontainers.
+
 Para trabalhar no código do `boleto-backend`, rode `mise install` na pasta dele (Java 25 e Node nas versões do `mise.toml`) e `.\gradlew.bat test` ou `./gradlew test`, com o Docker ativo e o `boleto-migrations` clonado ao lado do `boleto-backend`. Os testes constroem a imagem de migração (`docker build -t boleto-migrations:teste ../boleto-migrations`), sobem um PostgreSQL por Testcontainers, aplicam o schema real e conectam como `boleto_app` ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)). Se o `boleto-migrations` estiver em outra pasta (por exemplo, em um worktree), defina `MIGRATIONS_CONTEXT`; com uma imagem já construída, defina `MIGRATIONS_IMAGE` e o build é pulado. Sem `Dockerfile` na pasta, a tarefa `construirImagemMigracoes` aborta e nomeia a pasta. O Gradle não baixa JDK sozinho, ele usa o Java do mise.
 
 ```powershell

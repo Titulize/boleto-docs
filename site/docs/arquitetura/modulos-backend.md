@@ -24,6 +24,7 @@ flowchart TB
   end
 
   auth --> usuarios
+  auth --> empresas
   usuarios --> empresas
   auditoria --> usuarios
   faturas --> titulos
@@ -55,7 +56,8 @@ br.com.titulize.boleto
 | `empresas` | `EmpresaGestora` (`@Audited`, sem `@TenantId`: o `id` é o tenant; isolada só pela RLS), `EmpresaGestoraRepository` | `shared` |
 | `usuarios` | `Usuario` (`@Audited`, `@TenantId`), `SituacaoUsuario`, `UsuarioRepository`, `UsuarioServico` (`criar`, `renomear`, `alterarSituacao`) | `empresas`, `shared` |
 | `auditoria` | `RevisaoAuditoria` (`revinfo`), `RevisaoAuditoriaListener`, `ConsultaAuditoria`, `RevisaoAuditada`, `Alteracao`, `DiffAuditoria` | `usuarios`, `shared` |
-| `auth` | só `package-info.java`. O Task 9 é o único autorizado a ligar o `ContextoTenant` | `usuarios`, `shared` |
+| `auth` | só `package-info.java` até o Task 8. O Task 9 acrescenta login, refresh, logout, `/auth/me`, assumir empresa, limites, filtro que liga o `ContextoTenant` a partir do JWT e administrador inicial. É o único autorizado a ligar o `ContextoTenant` ([Autenticação](./autenticacao.md)) | `usuarios`, `empresas`, `shared` |
+| `shared.seguranca` | Task 9: `RequerPermissao`, `Acao` e `Telas` ([ADR 0048](../adr/0048-permissoes-por-anotacao-e-assumir-empresa.md)) | |
 | `shared.tenant` | `ContextoTenant`, `ContextoTenantAusenteException`, `TenantIdResolver`, `TenantJpaDialect`, `TenantConfig` | |
 | `shared.erro` | `CodigoErro`, `ErroNegocio`, `ManipuladorDeErros` | |
 | `shared.log` | `TraceIdFilter` | |

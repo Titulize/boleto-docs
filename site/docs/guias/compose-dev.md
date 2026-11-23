@@ -15,7 +15,7 @@ A aplicação inteira roda no Docker Compose, com o `docker-compose.yml` da raiz
 | `valkey` | Valkey 9.1.4 ([ADR 0006](../adr/0006-valkey.md)) | `127.0.0.1:6379` | Compatível com Redis, com senha |
 | `mailpit` | Mailpit 1.34.0 | SMTP `127.0.0.1:1025`, interface `http://localhost:8025` | Captura todo e-mail enviado |
 | `flyway` | Imagem do `boleto-migrations` (Flyway por JAR, [ADR 0024](../adr/0024-flyway-jar-corretto.md)), build de `MIGRATIONS_CONTEXT` (padrão `../boleto-migrations`) | nenhuma | Aplica as migrações a cada `up` e sai |
-| `backend` | API Spring Boot, build de `BACKEND_CONTEXT` (padrão `../boleto-backend`), imagem `boleto-backend:dev` | `http://localhost:8080` (`BACKEND_PORT`) | Esqueleto do backend com health e Swagger ([ADR 0034](../adr/0034-servico-backend-no-compose.md)) |
+| `backend` | API Spring Boot, build de `BACKEND_CONTEXT` (padrão `../boleto-backend`), imagem `boleto-backend:dev` | `http://localhost:8080` (`BACKEND_PORT`) | API do backend com autenticação, health e Swagger ([ADR 0034](../adr/0034-servico-backend-no-compose.md)) |
 | `docs` (profile `docs`) | Site Docusaurus, build de `docker/docs.Dockerfile` | `http://localhost:3000/boleto-docs/` | Documentação com recarga ao salvar |
 
 As portas ficam só em `127.0.0.1`: outras máquinas da rede não alcançam os serviços.
@@ -120,7 +120,9 @@ docker compose ps
   Esse comando depende da imagem do backend reconstruída com `docker compose up -d --build`. A imagem construída antes do Task 8 escreve texto.
 - Erros da API saem em Problem Details com `codigo` e `traceId` ([Erros da API](../arquitetura/erros-da-api.md)). O `traceId` do corpo é o mesmo do cabeçalho `X-Trace-Id` e do log.
 - O Compose sobe o PostgreSQL com a migração já aplicada, então a V2 do `boleto-migrations` chega com o `up -d --build`, sem apagar dados.
-- O backend não depende do Valkey. O Valkey sobe junto porque faz parte da infraestrutura, mas o backend só o usa a partir do Task 9.
+- Desde o Task 9 o backend depende do Valkey (`service_healthy`): guarda refresh tokens, blacklist e limites ([Autenticação](../arquitetura/autenticacao.md)). O Compose define `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT` e `SPRING_DATA_REDIS_PASSWORD` (a mesma `VALKEY_PASSWORD`).
+- O Compose liga `BOLETO_JWT_GERAR_CHAVE_EFEMERA=true`: a chave JWT é gerada a cada início e os tokens deixam de valer quando o backend reinicia ([ADR 0044](../adr/0044-jwt-es256-e-chave.md)). Só dev.
+- O administrador inicial é criado no primeiro início com `BOLETO_ADMIN_INICIAL_EMAIL` (padrão `admin@boleto.test`) e `BOLETO_ADMIN_INICIAL_SENHA` (padrão de dev no `docker-compose.yml`, mínimo 12 caracteres). Trocar a variável depois não muda a senha de quem já existe ([ADR 0049](../adr/0049-administrador-inicial.md)).
 
 ### Em worktree do git
 
