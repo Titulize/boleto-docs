@@ -81,7 +81,11 @@ test('o backend sobe sem profile, em 127.0.0.1, depois do banco saudável e da m
   assert.match(backend.text, /^ {6}- '127\.0\.0\.1:\$\{BACKEND_PORT:-8080\}:8080'\s*$/m);
   assert.match(backend.text, /^ {6}postgres:\s*\n {8}condition:\s*service_healthy\s*$/m);
   assert.match(backend.text, /^ {6}flyway:\s*\n {8}condition:\s*service_completed_successfully\s*$/m);
-  assert.doesNotMatch(backend.text, /^ {6}valkey:/m, 'o backend ainda não depende do valkey');
+  assert.match(backend.text, /^ {6}valkey:\s*\n {8}condition:\s*service_healthy\s*$/m, 'o backend espera o valkey (ADR 0046)');
+  assert.match(backend.text, /^ {6}SPRING_DATA_REDIS_HOST:\s*valkey\s*$/m);
+  assert.match(backend.text, /^ {6}BOLETO_JWT_GERAR_CHAVE_EFEMERA:\s*'true'\s*$/m, 'chave efêmera só no dev (ADR 0044)');
+  assert.match(backend.text, /^ {6}BOLETO_ADMIN_INICIAL_EMAIL:/m);
+  assert.match(backend.text, /^ {6}BOLETO_ADMIN_INICIAL_SENHA:/m);
   assert.match(backend.text, /^ {4}healthcheck:/m);
   // Imagem construída localmente (build), por isso sem âncora do bloco gerado.
   assert.match(backend.text, /^ {4}image:\s*boleto-backend:dev\s*$/m);
