@@ -61,7 +61,7 @@ O desenho das tabelas está em [Modelo de dados](./modelo-de-dados.md). A `revin
 
 ### Contexto de tenant
 
-O `ContextoTenant` (`shared.tenant`) guarda `tenantId` (efetivo), `tenantOrigemId` e `usuarioId` num `ScopedValue`. Só código do servidor o liga: hoje, os testes. Depois do Task 9, só o módulo `auth` (regra `contextoTenantSoLigadoPeloAuth` do ArchUnit). Nenhum controller, filtro ou cabeçalho lê tenant ou usuário do cliente, e o `X-Tenant-Id` é ignorado. Decisão no [ADR 0037](../adr/0037-contexto-de-tenant-por-transacao.md).
+O `ContextoTenant` (`shared.tenant`) guarda `tenantId` (efetivo), `tenantOrigemId` e `usuarioId` num `ScopedValue`. Só código do servidor o liga: desde o Task 9, o `ContextoTenantFilter` do módulo `auth`, com `tid`, `tor` e `sub` do JWT validado (regra `contextoTenantSoLigadoPeloAuth` do ArchUnit, [ADR 0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md)). Nenhum controller, filtro ou cabeçalho lê tenant ou usuário do cliente, e o `X-Tenant-Id` é ignorado. Decisão no [ADR 0037](../adr/0037-contexto-de-tenant-por-transacao.md).
 
 | Peça | O que faz |
 |---|---|
@@ -71,11 +71,11 @@ O `ContextoTenant` (`shared.tenant`) guarda `tenantId` (efetivo), `tenantOrigemI
 
 O valor com escopo local some no commit e no rollback, então não vaza entre conexões do pool. Fora de uma transação o banco devolve 0 linhas. O `@TenantId` está em `Usuario`. A `EmpresaGestora` não tem `@TenantId` (o `id` dela é o tenant), e o isolamento dela é só a RLS.
 
-Limites conhecidos: `@Async` e threads virtuais não herdam o `ScopedValue` e falham fechado; não há teste de `REQUIRES_NEW` com outro contexto nem de transação `readOnly`.
+Threads novas não herdam o `ScopedValue`. O executor `executorComContexto` (`shared.tenant`, threads virtuais) usa o `ContextoTaskDecorator`, que religa o contexto da thread que agendou; sem ele a tarefa roda sem contexto e falha fechado (`ContextoTaskDecoratorTest`). O ArchUnit recusa `@Async` com outro executor e leitura de cabeçalho fora do `auth`, e o `SemCabecalhoDeTenantTest` recusa o texto `X-Tenant-Id` no código de produção. Limites conhecidos: não há teste de `REQUIRES_NEW` com outro contexto nem de transação `readOnly`.
 
 ### Revisão e diff
 
-A `RevisaoAuditoria` (`revinfo`) e o `RevisaoAuditoriaListener` ficam no módulo `auditoria`. O listener lê o `ContextoTenant` e grava usuário, tenant efetivo e o tenant de origem (só quando difere do efetivo). Sem contexto, a escrita auditada falha. `EmpresaGestora` e `Usuario` são auditadas. `criado_em`, `atualizado_em` e `versao` são `@NotAudited`, e `senha_hash` não é mapeada. O `tenant_id` da `empresa_gestora_aud` vem de um gatilho da migração V2 ([ADR 0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md)).
+A `RevisaoAuditoria` (`revinfo`) e o `RevisaoAuditoriaListener` ficam no módulo `auditoria`. O listener lê o `ContextoTenant` e grava usuário, tenant efetivo e o tenant de origem (só quando difere do efetivo). Sem contexto, a escrita auditada falha. `EmpresaGestora`, `Usuario`, `Perfil`, `PerfilTelaPermissao` e `UsuarioPerfil` são auditadas (`AuditoriaPerfilIT`). `criado_em`, `atualizado_em` e `versao` são `@NotAudited`, e `senha_hash` é mapeada como `@NotAudited` (a `usuario_aud` não tem a coluna). A exclusão grava os dados da linha (`org.hibernate.envers.store_data_at_delete=true`): sem isso a revisão `DEL` sai com `tenant_id` nulo e a RLS da `_aud` a recusa. No Task 9 se descobriu que as chaves `org.hibernate.envers.*` do `application.yml` estavam aninhadas em `hibernate` e não chegavam ao Envers; valiam os padrões, que coincidem com o schema. O `tenant_id` da `empresa_gestora_aud` vem de um gatilho da migração V2 ([ADR 0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md)).
 
 `ConsultaAuditoria.historico(Class, id)` devolve as revisões com o diff (`campo`, `anterior`, `novo`), calculado por reflexão entre retratos consecutivos ([ADR 0038](../adr/0038-auditoria-com-envers.md)). É só serviço: não há endpoint antes da autenticação. A auditoria do catálogo `tela` está decidida e fica para a tarefa do Cadastro de Telas ([ADR 0039](../adr/0039-auditoria-do-catalogo-tela.md)).
 

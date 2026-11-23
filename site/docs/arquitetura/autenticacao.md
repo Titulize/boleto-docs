@@ -4,7 +4,7 @@ title: Autenticação e autorização
 ---
 # Autenticação e autorização
 
-Como o backend identifica quem chama a API e o que essa pessoa pode fazer. Decisões nos ADRs [0044](../adr/0044-jwt-es256-e-chave.md) a [0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md). Esta página descreve o desenho do Task 9; a situação da entrega está no [registro de progresso](../progresso/index.md).
+Como o backend identifica quem chama a API e o que essa pessoa pode fazer. Decisões nos ADRs [0044](../adr/0044-jwt-es256-e-chave.md) a [0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md). Esta página descreve o que o Task 9 implementou; a situação da entrega está no [registro do Task 9](../progresso/task-09-autenticacao-autorizacao.md).
 
 ## Endpoints
 
@@ -67,13 +67,13 @@ Login com e-mail inexistente, senha errada, usuário inativo ou bloqueado devolv
 
 ### Refresh com rotação
 
-1. O cliente envia o refresh. O backend calcula o SHA-256 e executa um script Lua que apaga `refresh:{hash}`, grava `refresh-usado:{hash}` e grava o novo `refresh:{novo}`.
-2. Se o refresh já foi usado, o script devolve o `sid`. O backend revoga a sessão inteira e responde 401 `REFRESH_REUTILIZADO`.
+1. O cliente envia o refresh. O backend calcula o SHA-256 e executa um script Lua que confere `sessao-revogada:{sid}` e o fim da sessão, apaga `refresh:{hash}`, grava `refresh-usado:{hash}` e grava o novo `refresh:{novo}`, tudo de forma atômica. O valor guarda o tenant de origem e o fim da sessão, então o refresh não consulta o banco para isso.
+2. Se o refresh já foi usado, o mesmo script grava `sessao-revogada:{sid}` e devolve o `sid`: a sessão inteira cai e a resposta é 401 `REFRESH_REUTILIZADO`. De dois refreshs simultâneos com o mesmo token, só um passa.
 3. Depois da meia-noite da sessão, o refresh falha e a pessoa faz login.
 
 ### Logout
 
-Grava `sessao-revogada:{sid}` com o TTL do que resta da sessão. O access e o refresh dessa sessão deixam de valer.
+Grava `sessao-revogada:{sid}` com TTL fixo de 25 horas, maior que qualquer sessão. O access e o refresh dessa sessão deixam de valer. Um usuário que deixa de ser `ATIVO` também perde o acesso na hora: a situação é conferida a cada requisição (401 `TOKEN_INVALIDO`).
 
 ### Assumir empresa
 
@@ -83,11 +83,11 @@ Só a empresa da plataforma pode. O novo access leva `tid` da empresa escolhida 
 
 | Chave | Valor | TTL |
 |---|---|---|
-| `refresh:{hash}` | `sid\|usuarioId` | validade do refresh |
+| `refresh:{hash}` | `sid\|usuarioId\|tenantOrigem\|sessaoExpiraEm` (epoch em ms) | validade do refresh |
 | `refresh-usado:{hash}` | `sid` | o que resta da sessão |
-| `sessao-revogada:{sid}` | `1` | o que resta da sessão |
+| `sessao-revogada:{sid}` | `1` | 25 horas no logout (mais que qualquer sessão); o que resta da sessão no reuso |
+| `limite:ip:{ip}`, `limite:email:{sha256(email)}` | estado dos baldes do Bucket4j | gerido pela biblioteca |
 | `login-falhas:{sha256(email)}` | contador de falhas | 15 minutos, fixo desde a 1ª falha |
-| chaves do Bucket4j | estado dos baldes por IP e por e-mail | gerido pela biblioteca |
 
 Com o Valkey fora do ar, o backend responde 503 `SERVIDOR_INDISPONIVEL`. Ele nunca aceita um token sem consultar `sessao-revogada` ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md)).
 
@@ -123,6 +123,8 @@ Com `docker compose up -d --build` rodando:
 3. Copie o `accessToken`, clique em "Authorize" e cole o token.
 4. Chame `GET /auth/me`. A resposta mostra o usuário, o tenant e as permissões.
 5. Para ver o bloqueio, faça seis logins com senha errada: as cinco primeiras respondem 401 e a sexta responde 429.
+
+O bloqueio dura 15 minutos, e mais de 10 logins do mesmo e-mail em um minuto também devolvem 429 (limite por e-mail). Para repetir a demonstração antes disso, limpe o Valkey de dev: `docker compose exec valkey valkey-cli -a valkey_dev --no-auth-warning FLUSHALL`.
 
 ## Pendências
 

@@ -18,7 +18,7 @@ Fundação da plataforma e módulo de Login. Cada tarefa tem um registro com o q
 | [07](./task-07-esqueleto-backend.md) | Esqueleto do backend | Concluída | 2026-11-22 |
 | [08](./task-08-base-multitenant-auditoria.md) | Base multi-tenant e auditoria | Concluída | 2026-11-22 |
 | [M1](./melhoria-hook-commit-msg.md) | Hook `commit-msg` com commitlint (melhoria de processo) | Em andamento | 2026-11-22 |
-| 09 | Autenticação e autorização | Não iniciada | |
+| [09](./task-09-autenticacao-autorizacao.md) | Autenticação e autorização | Em andamento | 2026-11-23 |
 | 10 | Convite de usuário e "esqueci minha senha" | Não iniciada | |
 | 11 | Observabilidade local | Não iniciada | |
 | 12 | Esqueleto do frontend | Não iniciada | |

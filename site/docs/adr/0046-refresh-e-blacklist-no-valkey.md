@@ -26,6 +26,7 @@ O [ADR 0012](./0012-autenticacao.md) pede refresh com rotação no Valkey e blac
 - Um vazamento do Valkey não revela refresh tokens utilizáveis, só hashes.
 - O logout e a detecção de reuso valem imediatamente em todas as instâncias do backend.
 - O Valkey passa a ser dependência de disponibilidade da API autenticada.
+- Descoberto na implementação: o valor de `refresh:{hash}` precisou levar também o tenant de origem e o fim da sessão (`sid|usuarioId|tenantOrigem|sessaoExpiraEm`), para o refresh não consultar o banco. O script também confere `sessao-revogada:{sid}` e o fim da sessão, e no reuso já grava `sessao-revogada:{sid}`. No logout o TTL de `sessao-revogada:{sid}` é fixo em 25 horas, maior que qualquer sessão. Detalhes em [Autenticação e autorização](../arquitetura/autenticacao.md#chaves-do-valkey).
 ## Alternativas consideradas
 | Alternativa | Por que não |
 |---|---|
