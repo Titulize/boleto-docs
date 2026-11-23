@@ -12,9 +12,9 @@ O [ADR 0012](./0012-autenticacao.md) pede refresh com rotação no Valkey e blac
 
 | Chave | Valor | TTL |
 |---|---|---|
-| `refresh:{hash}` | `sid\|usuarioId` | validade do refresh |
+| `refresh:{hash}` | `sid\|usuarioId\|tenantOrigem\|sessaoExpiraEmEpochMs` | validade do refresh |
 | `refresh-usado:{hash}` | `sid` | o que resta da sessão |
-| `sessao-revogada:{sid}` | `1` | o que resta da sessão |
+| `sessao-revogada:{sid}` | `1` | 25 horas no logout e no reuso |
 
 - `sessao-revogada:{sid}` é a blacklist do logout e do reuso. Todo access token é validado contra ela.
 - A rotação é um script Lua atômico: lê e apaga `refresh:{hash}`, grava `refresh-usado:{hash}` e grava o novo `refresh:{novo}`.
