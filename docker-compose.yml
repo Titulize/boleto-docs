@@ -102,7 +102,7 @@ services:
       # Senha da role boleto_app (a que o backend usa), aplicada a cada execução pelo afterMigrate.
       FLYWAY_PLACEHOLDERS_APP_PASSWORD: ${BOLETO_APP_PASSWORD:-boleto_app_dev}
   # API Spring Boot (boleto-backend). Espera o banco saudável e a migração concluída com sucesso
-  # (ADR 0027). Não depende do valkey (o Task 9 acrescenta). A documentação da API (Swagger UI) fica
+  # (ADR 0027) e o valkey saudável (sessões e limites, ADRs 0046 e 0047). A documentação da API (Swagger UI) fica
   # ligada só aqui, no dev (ADR 0032). O contexto de build é ../boleto-backend; em worktree use
   # BACKEND_CONTEXT.
   backend:
@@ -114,6 +114,8 @@ services:
         condition: service_healthy
       flyway:
         condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
     restart: 'no'
     ports:
       - '127.0.0.1:${BACKEND_PORT:-8080}:8080'
@@ -121,6 +123,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-boleto}
       SPRING_DATASOURCE_USERNAME: boleto_app
       SPRING_DATASOURCE_PASSWORD: ${BOLETO_APP_PASSWORD:-boleto_app_dev}
+      SPRING_DATA_REDIS_HOST: valkey
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${VALKEY_PASSWORD:-valkey_dev}
+      # Só no dev: chave JWT efêmera, os tokens morrem quando o backend reinicia (ADR 0044).
+      BOLETO_JWT_GERAR_CHAVE_EFEMERA: 'true'
+      # Administrador inicial, só para desenvolvimento (ADR 0049).
+      BOLETO_ADMIN_INICIAL_EMAIL: ${BOLETO_ADMIN_INICIAL_EMAIL:-admin@boleto.test}
+      BOLETO_ADMIN_INICIAL_SENHA: ${BOLETO_ADMIN_INICIAL_SENHA:-Admin-dev-2026!}
       SPRINGDOC_API_DOCS_ENABLED: 'true'
       SPRINGDOC_SWAGGER_UI_ENABLED: 'true'
     healthcheck:

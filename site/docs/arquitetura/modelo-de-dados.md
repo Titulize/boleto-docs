@@ -49,6 +49,10 @@ O catálogo `tela` não é auditado pelo Envers na V1 nem na V2: ele muda só po
 
 **V2 (`V2__auditoria_empresa_gestora_tenant.sql`).** A `empresa_gestora` não tem `tenant_id` (o `id` é o tenant), e a `empresa_gestora_aud.tenant_id` é `NOT NULL`. Um gatilho `BEFORE INSERT` em `empresa_gestora_aud` faz `tenant_id := id`, porque o Envers não consegue preencher a coluna ([ADR 0042](../adr/0042-v2-tenant-da-auditoria-da-empresa.md)). A `revinfo_seq` com incremento 50 e o `revtype smallint` foram conferidos pelo backend com `ddl-auto=validate` contra o schema real ([ADR 0036](../adr/0036-schema-real-nos-testes-do-backend.md)).
 
+## Task 9: sem V3
+
+O Task 9 não muda o schema. O bloqueio por tentativas fica no Valkey ([ADR 0047](../adr/0047-rate-limiting-e-bloqueio-de-conta.md)). As tabelas `perfil_aud`, `perfil_tela_permissao_aud` e `usuario_perfil_aud` já existem, e o backend passa a auditá-las. O backend passa a mapear `usuario.senha_hash` (fora da auditoria). Os grants da V1 bastam.
+
 ## Dados da V1
 
 | Dado | Valor |

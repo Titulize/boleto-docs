@@ -54,3 +54,10 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0041](./0041-logs-json-com-traceid.md) | Logs JSON com `traceId` | Aceito |
 | [0042](./0042-v2-tenant-da-auditoria-da-empresa.md) | V2: tenant da auditoria da empresa gestora | Aceito |
 | [0043](./0043-hook-commit-msg.md) | Hook `commit-msg` com commitlint, instalado pelo bootstrap | Aceito |
+| [0044](./0044-jwt-es256-e-chave.md) | JWT com ES256 e origem da chave | Aceito |
+| [0045](./0045-claims-tempos-e-sessao-diaria.md) | Claims, tempos de vida e sessão diária | Aceito |
+| [0046](./0046-refresh-e-blacklist-no-valkey.md) | Refresh token e blacklist no Valkey | Aceito |
+| [0047](./0047-rate-limiting-e-bloqueio-de-conta.md) | Limite de requisições e bloqueio de conta | Aceito |
+| [0048](./0048-permissoes-por-anotacao-e-assumir-empresa.md) | Permissões por anotação e assumir empresa | Aceito |
+| [0049](./0049-administrador-inicial.md) | Administrador inicial | Aceito |
+| [0050](./0050-contexto-de-tenant-jwt-e-threads.md) | Contexto de tenant, JWT e threads | Aceito |

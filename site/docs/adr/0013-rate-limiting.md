@@ -21,6 +21,8 @@ Bucket4j com Valkey (via Lettuce), com limites por IP e por usuário nos endpoin
 - O estado do limite é compartilhado entre instâncias do backend.
 - Atrás de um balanceador, o IP do cliente deve vir de um cabeçalho confiável. Isso será configurado e testado com a infraestrutura.
 
+**Nota (2026-11-23):** o Task 9 definiu os limites, o bloqueio de conta e a regra do IP do cliente no [ADR 0047](./0047-rate-limiting-e-bloqueio-de-conta.md), sem alterar esta decisão.
+
 ## Alternativas consideradas
 
 | Alternativa | Por que não |
