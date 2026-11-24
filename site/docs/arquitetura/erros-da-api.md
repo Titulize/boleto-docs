@@ -101,7 +101,7 @@ O refresh token já tinha sido usado. O backend entende como possível roubo e r
 O link do convite ou da recuperação de senha não vale: o token não existe, expirou (72 horas no convite, 30 minutos na recuperação), já foi usado ou pertence a um usuário que não pode usá-lo naquele momento. A resposta é a mesma nos quatro casos, para não revelar nada. O `detail` é "Link inválido ou expirado. Peça um novo.". Peça um novo convite ao administrador ou use "esqueci minha senha" ([ADR 0051](../adr/0051-tokens-de-convite-e-recuperacao-de-senha.md)).
 
 ### SENHA_FRACA {#senha_fraca}
-A senha não cumpre a política: de 12 a 128 caracteres, pelo menos 6 caracteres diferentes, sem sequência simples, fora da lista de senhas comuns e sem conter o nome nem o início do e-mail. O `detail` diz a regra violada e nunca traz a senha. O token não é consumido: envie de novo com outra senha ([ADR 0052](../adr/0052-politica-de-senha.md)).
+A senha não cumpre a política: de 12 a 128 caracteres, pelo menos 6 caracteres diferentes, sem sequência simples, fora da lista de senhas comuns e sem conter o nome completo nem a parte local do e-mail (antes do `@`, quando tem 4 caracteres ou mais). O `detail` diz a regra violada e nunca traz a senha. O token não é consumido: envie de novo com outra senha ([ADR 0052](../adr/0052-politica-de-senha.md)).
 
 ### SEM_PERMISSAO {#sem_permissao}
 

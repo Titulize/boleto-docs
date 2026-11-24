@@ -119,7 +119,7 @@ docker compose ps
   ```
   Esse comando depende da imagem do backend reconstruída com `docker compose up -d --build`. A imagem construída antes do Task 8 escreve texto.
 - Erros da API saem em Problem Details com `codigo` e `traceId` ([Erros da API](../arquitetura/erros-da-api.md)). O `traceId` do corpo é o mesmo do cabeçalho `X-Trace-Id` e do log.
-- O Compose sobe o PostgreSQL com a migração já aplicada, então a V2 do `boleto-migrations` chega com o `up -d --build`, sem apagar dados.
+- O Compose sobe o PostgreSQL com a migração já aplicada, então a V2 e a V3 do `boleto-migrations` chegam com o `up -d --build`, sem apagar dados.
 - Desde o Task 9 o backend depende do Valkey (`service_healthy`): guarda refresh tokens, blacklist e limites ([Autenticação](../arquitetura/autenticacao.md)). O Compose define `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT` e `SPRING_DATA_REDIS_PASSWORD` (a mesma `VALKEY_PASSWORD`).
 - O Compose liga `BOLETO_JWT_GERAR_CHAVE_EFEMERA=true`: a chave JWT é gerada a cada início e os tokens deixam de valer quando o backend reinicia ([ADR 0044](../adr/0044-jwt-es256-e-chave.md)). Só dev.
 - Desde o Task 10 o backend também depende do Mailpit (`service_healthy`) e envia a ele os e-mails de convite e de recuperação de senha por SMTP (`SPRING_MAIL_HOST=mailpit`, `SPRING_MAIL_PORT=1025`). Veja os e-mails em `http://localhost:8025` ([Convite e senha](./convite-e-senha.md)). `BOLETO_APP_URL_BASE` (padrão `http://localhost:4200`) é a base dos links e `BOLETO_EMAIL_REMETENTE` o remetente ([ADR 0053](../adr/0053-email-smtp-link-e-modelos.md)).
