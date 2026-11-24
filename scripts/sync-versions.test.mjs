@@ -101,6 +101,7 @@ test('init do backend gera catálogo, wrapper, env e bloco do Dockerfile', async
   const env = readFileSync(join(root, '.platform/versions.env'), 'utf8');
   assert.match(env, /^CORRETTO_JDK_IMAGE=public\.ecr\.aws\/amazoncorretto\/amazoncorretto:25\.0\.5-al2023@sha256:[0-9a-f]{64}$/m);
   assert.match(env, /^JAVA_MAJOR=25$/m);
+  assert.match(env, /^MAILPIT_IMAGE=.+@sha256:[0-9a-f]{64}$/m);
 
   const df = readFileSync(join(root, 'Dockerfile'), 'utf8');
   assert.match(df, /ARG CORRETTO_JDK_IMAGE=public\.ecr\.aws\/amazoncorretto\/amazoncorretto:25\.0\.5-al2023@sha256:/);

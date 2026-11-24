@@ -60,7 +60,7 @@ export const TARGETS = {
     },
   },
   backend: {
-    images: ['amazonlinux', 'corretto_jdk', 'corretto_headless', 'postgres', 'valkey'],
+    images: ['amazonlinux', 'corretto_jdk', 'corretto_headless', 'postgres', 'valkey', 'mailpit'],
     vars: ['java', 'gradle', 'node'],
     miseTools: ['java', 'node'],
     packages: null,
