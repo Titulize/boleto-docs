@@ -5,7 +5,7 @@ title: 'Task 09: Autenticação e autorização'
 
 # Task 09: Autenticação e autorização
 
-- **Situação:** Em andamento (implementação local pronta; falta enviar os PRs e a CI)
+- **Situação:** Concluída
 - **Início:** 2026-11-23
 - **Última atualização:** 2026-11-23
 - **Repositórios:** `boleto-docs`, `boleto-backend` (o `boleto-migrations` não muda)
@@ -16,7 +16,7 @@ O backend passa a autenticar com JWT e refresh rotativo no Valkey, encerrar a se
 
 ## Entregue
 
-Tudo em commits locais na branch `feat/task-09-autenticacao` dos dois repositórios, ainda sem push.
+O backend entrou na `main` do `boleto-backend` pelo [PR #8](https://github.com/Titulize/boleto-backend/pull/8), por squash (`00da90ba6ac7eabcfd221e48dfb4593c8c3ed7f7`, título `feat(auth): autenticacao JWT, refresh, sessao diaria, bloqueio e permissoes (#8)`). A `main` não andou desde a base da branch (`ee105a3`), então não houve rebase. Os hashes abaixo são os dos commits da branch, que o squash reuniu. A documentação entra pelo PR do `boleto-docs` que contém este registro.
 
 `boleto-docs`:
 
@@ -45,46 +45,54 @@ Execução local no Windows, Docker Desktop, `MIGRATIONS_CONTEXT` apontando para
 |---|---|---|
 | Baseline do backend antes de mexer | `.\gradlew.bat spotlessCheck check` | passou |
 | Suíte do backend | `.\gradlew.bat spotlessApply spotlessCheck check` em `b7361fe` e `spotlessCheck check` em `6dcf1d4` | 106 testes, 0 falhas; Jacoco 847 de 908 linhas (93%); mínimo 80% (medido em `6dcf1d4`) |
-| Suíte do backend depois da correção da revisão | `spotlessCheck check` em `caadd34` | 107 testes, 0 falhas, 0 ignorados; Jacoco 854 de 915 linhas (93%) |
+| Suíte do backend depois da correção da revisão (contagem final) | `spotlessCheck check` em `caadd34` e CI do PR #8 | 107 testes, 0 falhas, 0 ignorados; Jacoco: 94,2% das instruções (3767 de 3999), 82,6% dos branches (157 de 190), 93,3% das linhas (854 de 915); mínimo 80% |
 | Imagem do backend | `docker build -t boleto-backend:t09 .` | passou |
 | Versões do backend | `node .platform/sync-versions.mjs check --remote` | versões em dia |
 | Commits | `npx commitlint --from origin/main --to HEAD` nos dois repositórios | passou (um aviso `footer-leading-blank` no `6dcf1d4`, sem erro) |
+| CI remota do `boleto-backend` | PR #8 e `main` depois do squash | passou (ver "Workflows") |
+| `actionlint` no `ci.yml` do backend | antes do push | sem erros |
 | Compose | `docker compose config -q` | passou |
 | Scripts do `boleto-docs` | `npm run validate`, `npm run sync:check`, `npm test` | passaram |
 | Site | `docker compose --profile docs run --rm --no-deps docs sh -c "npm ci && npm run build"` | passou, sem links quebrados |
 
 ### Demonstração
 
-Executada em 2026-11-23 com `docker compose up -d --build --wait` no worktree do `boleto-docs`, `BACKEND_CONTEXT` no worktree do backend (`6dcf1d4`) e `MIGRATIONS_CONTEXT` no `boleto-migrations`. As chamadas HTTP são as mesmas do "Try it out" do Swagger:
+Executada em 2026-11-23 (23h30 em `America/Sao_Paulo`) num projeto Compose separado (`boleto-demo-task09`, portas 25432, 26379, 21025, 28025 e 28080), com `BACKEND_CONTEXT` no worktree do backend em `caadd34`, `MIGRATIONS_CONTEXT` no `boleto-migrations` (sem V3) e um arquivo de override só com os nomes das imagens. Ele evita que o build sobrescreva `boleto-backend:dev` e `boleto-migrations:dev` do `boleto-dev`. Postgres, Valkey e Mailpit saudáveis, `flyway` com código 0 e backend saudável em cerca de 10 s. As chamadas HTTP são as mesmas do "Try it out" do Swagger. Sem tokens nem senhas reais abaixo:
 
 ```
-swagger-ui.html: 302 -> /swagger-ui/index.html
-api-docs: 200, bearerAuth presente: True
-login admin: 200
-tipo=Bearer expiraEm=2026-11-23T05:48:34Z sessaoExpiraEm=2026-11-24T03:00:00Z
-me: 200 tenantId=00000000-0000-7000-8000-000000000001 origem=00000000-0000-7000-8000-000000000001 permissoes=16
-me sem token: 401 NAO_AUTENTICADO
-tentativa errada 1 a 5: 401 CREDENCIAIS_INVALIDAS
-tentativa errada 6: 429 LIMITE_EXCEDIDO Retry-After=889
-logout: 204
-me depois do logout: 401 TOKEN_INVALIDO
+swagger-ui: 200 em /swagger-ui/index.html; /v3/api-docs declara bearerAuth
+login (admin de dev): 200, accessToken e refreshToken, sessaoExpiraEm informado
+GET /auth/me: 200, 16 permissões, tenant efetivo e tenant de origem; sem token: 401 NAO_AUTENTICADO
+refresh com rotação: 200, refresh novo diferente, sessaoExpiraEm igual
+reuso do refresh antigo: 401 REFRESH_REUTILIZADO; refresh novo e access da sessão passam a dar 401
+logout: 204; access e refresh depois dele dão 401
+seis logins errados: 401 CREDENCIAIS_INVALIDAS x5; 6ª: 429 LIMITE_EXCEDIDO, Retry-After 899
+login correto durante o bloqueio: 429
+usuário sem perfil em POST /auth/assumir-empresa: 403 SEM_PERMISSAO
+admin da plataforma assume empresa: 200, novo access sem refresh (tid da empresa, tor da plataforma, mesmo sid e exp); empresa inexistente: 404
+exp limitado pela meia-noite, ao vivo: login às 23h31 gerou exp às 00h00 (28 min, não 1 h)
+SessaoDiariaTest (5) e DemoSwaggerIT (1) com relógio controlado: 6 testes, 0 falhas
 ```
 
-`sessaoExpiraEm` 03:00 UTC é a meia-noite de `America/Sao_Paulo`. O administrador `admin@boleto.test` foi criado pelo `AdminInicial` com o perfil da plataforma (16 permissões).
+O administrador inicial foi criado pelo `AdminInicial` (log com e-mail mascarado). Para o 403 e o assumir empresa, uma empresa extra e um usuário sem perfil foram inseridos por SQL no banco da demonstração. Ao fim, `down -v` e remoção das duas imagens `*-demo`; os volumes `boleto-dev_*` ficaram intactos.
+
+Uma primeira rodada, no Compose do worktree do `boleto-docs` (backend em `6dcf1d4`), tinha dado o mesmo resultado em login, `/auth/me`, 429 e logout.
 
 ### Workflows
 
-Nenhum ainda: não houve push. Ao enviar, acompanhar:
+| Repositório | Workflow | Run | Resultado |
+|---|---|---|---|
+| `boleto-backend` | `CI`, job "Build, testes, Spotless, Jacoco e imagem" (PR #8) | [45313697931](https://github.com/Titulize/boleto-backend/actions/runs/45313697931) | passou (5m16s) |
+| `boleto-backend` | `CI`, job "Conventional Commits" (PR #8) | [45313697931](https://github.com/Titulize/boleto-backend/actions/runs/45313697931) | passou (20s) |
+| `boleto-backend` | `CI` na `main` (`00da90b`) | [45314400899](https://github.com/Titulize/boleto-backend/actions/runs/45314400899) | passou |
 
-| Repositório | Workflow | Eventos |
-|---|---|---|
-| `boleto-backend` | `CI` (`Conventional Commits` e `Build, testes, Spotless, Jacoco e imagem`) | PR e `main` depois do squash |
-| `boleto-docs` | `CI` e `Documentação` | PR e `main` depois do squash |
-
+O `boleto-backend` só tem o workflow `CI`. Os workflows `CI` e `Documentação` do `boleto-docs` (PR e `main`) são acompanhados no envio deste registro. O resultado deles consta no tasks.md e no relatório do envio, porque o registro vai junto com o PR e não pode citar o resultado dele.
 ### O que não foi verificado
 
-- **CI remota** dos dois repositórios, inclusive o `ci.yml` do backend com `VALKEY_IMAGE` e a chave de cache `imagens-backend-v2`. O `actionlint` não foi rodado.
 - **Swagger UI no navegador.** A demonstração usou as mesmas chamadas HTTP; o clique em "Authorize" e o "Try it out" não foram feitos numa tela.
+- **Ao vivo:** Valkey fora do ar (503), concorrência de refresh, 429 por IP e `X-Forwarded-For` só têm cobertura nos testes automatizados (que passaram na CI). A troca de perfil sem novo login e a auditoria de `perfil*` também só nos testes.
+- **Logs completos da CI:** não foram lidos, porque nenhum job falhou.
+- **`docker compose up` do `boleto-docs` depois do squash:** não repetido; a demonstração rodou antes, nos commits da branch.
 - **Chave real em `BOLETO_JWT_CHAVE_PRIVADA`.** Só o `JwtValidacaoTest` exercita a derivação da chave pública; o Compose usa a chave efêmera.
 - `X-Forwarded-For` atrás de um proxy real, concorrência com várias instâncias do backend, Argon2 sob carga.
 - O TTL do Valkey corre no relógio real: os testes com `RelogioControlado` não aceleram a expiração de `login-falhas` nem dos baldes.
@@ -103,6 +111,11 @@ Nenhum ainda: não houve push. Ao enviar, acompanhar:
 - **O backend não subiu no `docker compose up`:** `BOLETO_JWT_GERAR_CHAVE_EFEMERA` não chegava ao Spring, porque o `application.yml` fixava `false` e o nome da variável não segue a ligação relaxada de `boleto.seguranca.jwt.gerar-chave-efemera`. Corrigido no `6dcf1d4` com `${BOLETO_JWT_GERAR_CHAVE_EFEMERA:false}`.
 - **Token de empresa assumida sobrevivia à perda do perfil de plataforma** até o `exp` (achado da revisão): o filtro só conferia a permissão na emissão. Corrigido em `caadd34`: a cada requisição com `tid` diferente de `tor`, o backend reconfere `PLATAFORMA_EMPRESAS:VISUALIZAR` e devolve 401 se faltar.
 - **ADR 0046 contradizia a si mesmo e o ADR 0012 tinha um caractere ESC** (achados da revisão): a tabela de chaves divergia da seção Consequências e o ESC estava no texto. Corrigidos em `6632d67`.
+- **Revisão (veredito final APROVADO):** a revisão apontou três itens, todos acima: token de empresa assumida (`caadd34`), contradição do ADR 0046 e caractere ESC no ADR 0012 (`6632d67`). Registrou ainda três riscos aceitos, sem mudança: o bloqueio por e-mail permite negar acesso a um usuário de propósito ([ADR 0047](../adr/0047-rate-limiting-e-bloqueio-de-conta.md)); dois refreshs simultâneos legítimos revogam a sessão ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md), relevante ao frontend); a senha de dev do administrador fica no Compose público, por decisão do plano.
+- **Falhas de CI:** nenhuma. Nem o PR #8 nem a `main` do backend tiveram job vermelho.
+- **Falhas só dos comandos locais do envio do backend, sem efeito no código:** um script de cobertura do Jacoco procurou um CSV que não existe (a leitura foi refeita pelo XML) e a saída de um `docker build` veio vazia numa chamada (repetido gravando em arquivo, exit 0).
+- **`up -d --build --wait` voltou com código 0 antes de backend e `flyway` estarem prontos** (ainda em `Created`), na demonstração. Não investigado; a espera foi feita por polling do healthcheck.
+- **Nomes de imagem fixos no Compose** (`boleto-backend:dev`, `boleto-migrations:dev`): subir outro projeto sem trocá-los sobrescreve as imagens do `boleto-dev`. Evitado com um override de nomes e registrado no [guia do Compose](../guias/compose-dev.md).
 - **Primeira rodada da demonstração com 429 na 3ª tentativa:** uma rodada anterior, no mesmo minuto, já tinha gasto o limite de 10 logins por minuto do e-mail. Com o Valkey de dev limpo (`FLUSHALL`), a rodada deu 401 cinco vezes e 429 na sexta. O README do backend e a página de autenticação explicam como repetir.
 
 ## Decisões e desvios do plano
@@ -115,13 +128,13 @@ Nenhum ainda: não houve push. Ao enviar, acompanhar:
 
 ## Pendências
 
-- **Enviar e integrar:** push das branches, PRs no `boleto-backend` e no `boleto-docs`, acompanhar todos os workflows e registrar os runs aqui. O Task 9 só fica concluído depois disso.
+Definição de pronto: código, testes e demonstração no repositório (feito); verificações locais e workflows do backend verdes (feito; os do `boleto-docs` constam no tasks.md); documentação e READMEs atualizados (feito); `tasks.md` com o estado real (feito). Nada do que o Task 9 prometia ficou aberto. Itens que seguem para depois, sem bloquear o fechamento:
+
 - **Frontend (Tasks 12 e 13):** ao carregar ou recarregar a página, o Angular chama `POST /auth/refresh` para obter um novo access. Isso exige guardar o refresh entre recarregamentos (sessionStorage ou cookie HttpOnly), escolha do frontend que reabre a evolução para cookie ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md)).
 - **Fuso da sessão diária:** `America/Sao_Paulo` é suposição a confirmar com o usuário ([ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md)).
-- **Teste de `store_data_at_delete` nas exclusões de `Usuario` e `EmpresaGestora`:** só a exclusão de `usuario_perfil` tem teste (`AuditoriaPerfilIT`). As outras duas dependem da mesma configuração do Envers, mas não têm teste. Pendência de segurança (a RLS recusaria a revisão `DEL` com `tenant_id` nulo).
+- **Teste de `store_data_at_delete` nas exclusões de `Usuario` e `EmpresaGestora`:** só a exclusão de `usuario_perfil` tem teste (`AuditoriaPerfilIT`). Ainda não existe código que exclua essas entidades, e a RLS recusaria a revisão `DEL` com `tenant_id` nulo, então o teste entra junto com a primeira exclusão.
 - **Produção:** preencher `BOLETO_JWT_CHAVE_PRIVADA` pelo Secrets Manager (fora do escopo da Fase 1).
 - Convite e "esqueci minha senha" ficam no Task 10.
-
 Pendências do Task 8 resolvidas aqui: o `ContextoTenant` é ligado pelo JWT validado; o contexto é propagado no executor `executorComContexto`; o `X-Tenant-Id` é ignorado em controller real (`TenantDoJwtIT` com `/auth/me`); `perfil*` e `usuario_perfil` são auditados; a exclusão (`DEL`) ganhou teste (`AuditoriaPerfilIT`). Seguem abertos os testes de `REQUIRES_NEW`, `readOnly` e concorrência com `@Version`.
 
 ## Histórico
@@ -131,4 +144,5 @@ Pendências do Task 8 resolvidas aqui: o `ContextoTenant` é ligado pelo JWT val
 | 2026-11-23 | ADRs 0044 a 0050, Compose e páginas de arquitetura no `boleto-docs` |
 | 2026-11-23 | Autenticação, sessão, refresh, limites e testes no `boleto-backend` |
 | 2026-11-23 | Correções da revisão: permissão reconferida no token de empresa assumida (`caadd34`), ADRs 0012 e 0046 (`6632d67`) e este registro |
+| 2026-11-23 | Backend integrado (PR #8, `00da90b`), demonstração ao vivo no Compose, workflows registrados e Task 9 concluída |
 | 2026-11-23 | Autorização, assumir empresa, auditoria de perfis, regras ArchUnit, demonstração no Compose e este registro; falta o envio |

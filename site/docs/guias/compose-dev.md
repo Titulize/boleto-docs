@@ -145,6 +145,18 @@ docker compose -p boleto-demo up -d --build
 docker compose -p boleto-demo down -v --remove-orphans   # apaga só este ambiente
 ```
 
+**Cuidado com as imagens.** O Compose fixa `boleto-backend:dev` e `boleto-migrations:dev`, e o nome do projeto (`-p`) não muda essas tags. O `up -d --build` de outro projeto reconstrói e sobrescreve as imagens do `boleto-dev`. Para não tocar nelas, passe um segundo arquivo (`-f docker-compose.yml -f demo.override.yml`) que só troque os nomes. Na demonstração do Task 9 ele foi assim:
+
+```yaml
+services:
+  backend:
+    image: boleto-demo-task09-backend:demo
+  flyway:
+    image: boleto-demo-task09-migrations:demo
+```
+
+Remova essas duas imagens depois do `down -v`. Outra observação da mesma demonstração: o `up -d --build --wait` voltou com código 0 enquanto `backend` e `flyway` ainda estavam em `Created`. Confirme o `/actuator/health` antes de usar o ambiente.
+
 Para rodar o backend fora do Compose (`./gradlew bootRun`) contra o PostgreSQL deste Compose, veja o README do `boleto-backend`: ele usa `POSTGRES_PORT` com o profile `dev`.
 
 ## Conectando
