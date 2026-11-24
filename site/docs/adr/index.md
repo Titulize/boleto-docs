@@ -61,3 +61,9 @@ Para propor uma decisão, copie o [modelo](./0000-modelo.md).
 | [0048](./0048-permissoes-por-anotacao-e-assumir-empresa.md) | Permissões por anotação e assumir empresa | Aceito |
 | [0049](./0049-administrador-inicial.md) | Administrador inicial | Aceito |
 | [0050](./0050-contexto-de-tenant-jwt-e-threads.md) | Contexto de tenant, JWT e threads | Aceito |
+| [0051](./0051-tokens-de-convite-e-recuperacao-de-senha.md) | Tokens de convite e de recuperação de senha | Aceito |
+| [0052](./0052-politica-de-senha.md) | Política de senha | Aceito |
+| [0053](./0053-email-smtp-link-e-modelos.md) | E-mail por SMTP, link e modelos | Aceito |
+| [0054](./0054-cpf-criptografado-e-blind-index.md) | CPF criptografado e blind index | Aceito |
+| [0055](./0055-mascara-de-dados-pessoais-nos-logs.md) | Máscara de dados pessoais nos logs | Aceito |
+| [0056](./0056-v3-cpf-do-usuario.md) | V3: CPF do usuário | Aceito |

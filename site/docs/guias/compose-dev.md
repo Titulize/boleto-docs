@@ -13,7 +13,7 @@ A aplicação inteira roda no Docker Compose, com o `docker-compose.yml` da raiz
 |---|---|---|---|
 | `postgres` | PostgreSQL 18.7 | `127.0.0.1:5432` | Banco `boleto` |
 | `valkey` | Valkey 9.1.4 ([ADR 0006](../adr/0006-valkey.md)) | `127.0.0.1:6379` | Compatível com Redis, com senha |
-| `mailpit` | Mailpit 1.34.0 | SMTP `127.0.0.1:1025`, interface `http://localhost:8025` | Captura todo e-mail enviado |
+| `mailpit` | Mailpit 1.34.0 | SMTP `127.0.0.1:1025`, interface `http://localhost:8025` | Captura todo e-mail enviado, inclusive o convite e a recuperação de senha do backend ([Convite e senha](./convite-e-senha.md)) |
 | `flyway` | Imagem do `boleto-migrations` (Flyway por JAR, [ADR 0024](../adr/0024-flyway-jar-corretto.md)), build de `MIGRATIONS_CONTEXT` (padrão `../boleto-migrations`) | nenhuma | Aplica as migrações a cada `up` e sai |
 | `backend` | API Spring Boot, build de `BACKEND_CONTEXT` (padrão `../boleto-backend`), imagem `boleto-backend:dev` | `http://localhost:8080` (`BACKEND_PORT`) | API do backend com autenticação, health e Swagger ([ADR 0034](../adr/0034-servico-backend-no-compose.md)) |
 | `docs` (profile `docs`) | Site Docusaurus, build de `docker/docs.Dockerfile` | `http://localhost:3000/boleto-docs/` | Documentação com recarga ao salvar |
@@ -119,10 +119,12 @@ docker compose ps
   ```
   Esse comando depende da imagem do backend reconstruída com `docker compose up -d --build`. A imagem construída antes do Task 8 escreve texto.
 - Erros da API saem em Problem Details com `codigo` e `traceId` ([Erros da API](../arquitetura/erros-da-api.md)). O `traceId` do corpo é o mesmo do cabeçalho `X-Trace-Id` e do log.
-- O Compose sobe o PostgreSQL com a migração já aplicada, então a V2 do `boleto-migrations` chega com o `up -d --build`, sem apagar dados.
+- O Compose sobe o PostgreSQL com a migração já aplicada, então a V2 e a V3 do `boleto-migrations` chegam com o `up -d --build`, sem apagar dados.
 - Desde o Task 9 o backend depende do Valkey (`service_healthy`): guarda refresh tokens, blacklist e limites ([Autenticação](../arquitetura/autenticacao.md)). O Compose define `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT` e `SPRING_DATA_REDIS_PASSWORD` (a mesma `VALKEY_PASSWORD`).
 - O Compose liga `BOLETO_JWT_GERAR_CHAVE_EFEMERA=true`: a chave JWT é gerada a cada início e os tokens deixam de valer quando o backend reinicia ([ADR 0044](../adr/0044-jwt-es256-e-chave.md)). Só dev.
-- O administrador inicial é criado no primeiro início com `BOLETO_ADMIN_INICIAL_EMAIL` (padrão `admin@boleto.test`) e `BOLETO_ADMIN_INICIAL_SENHA` (padrão de dev no `docker-compose.yml`, mínimo 12 caracteres). Trocar a variável depois não muda a senha de quem já existe ([ADR 0049](../adr/0049-administrador-inicial.md)).
+- Desde o Task 10 o backend também depende do Mailpit (`service_healthy`) e envia a ele os e-mails de convite e de recuperação de senha por SMTP (`SPRING_MAIL_HOST=mailpit`, `SPRING_MAIL_PORT=1025`). Veja os e-mails em `http://localhost:8025` ([Convite e senha](./convite-e-senha.md)). `BOLETO_APP_URL_BASE` (padrão `http://localhost:4200`) é a base dos links e `BOLETO_EMAIL_REMETENTE` o remetente ([ADR 0053](../adr/0053-email-smtp-link-e-modelos.md)).
+- O Compose define as chaves do CPF cifrado (`BOLETO_PII_CPF_CHAVES_1`, `BOLETO_PII_CPF_VERSAO_ATUAL` e `BOLETO_PII_CPF_INDICE_CHAVE`) com constantes públicas de desenvolvimento, que não são segredos. O backend não sobe sem chaves, e a chave efêmera não serve no Compose: o CPF gravado ficaria ilegível depois do restart ([Chaves de CPF](./chaves-de-cpf.md), [ADR 0054](../adr/0054-cpf-criptografado-e-blind-index.md)).
+- O administrador inicial é criado no primeiro início com `BOLETO_ADMIN_INICIAL_EMAIL` (padrão `admin@boleto.test`) e `BOLETO_ADMIN_INICIAL_SENHA` (padrão de dev no `docker-compose.yml`, que segue a [política de senha](../adr/0052-politica-de-senha.md): 12 a 128 caracteres). Trocar a variável depois não muda a senha de quem já existe ([ADR 0049](../adr/0049-administrador-inicial.md)).
 
 ### Em worktree do git
 
@@ -207,7 +209,7 @@ O profile `observability` com o Grafana LGTM (`OTEL_LGTM_IMAGE`, já no `version
 
 | Teste | O que cobre | Onde roda |
 |---|---|---|
-| `scripts/compose.test.mjs` (`npm test`) | Nome do projeto `boleto-dev`, só o compose da raiz, o `up` padrão com `postgres`, `valkey`, `mailpit`, `flyway` e `backend` (sem profile) e o `docs` no profile `docs`, o `flyway` roda uma vez e espera o banco saudável, o `backend` espera o banco saudável e o `flyway` concluído, publica só em `127.0.0.1` e não depende do Valkey, toda imagem de registro vem de uma âncora do bloco gerado e tem digest, todo serviço de infraestrutura tem healthcheck, toda porta fica em `127.0.0.1`, toda variável tem valor padrão e consta no `.env.example` com o mesmo valor, e a CI nomeia só `postgres valkey mailpit` | Local e CI |
+| `scripts/compose.test.mjs` (`npm test`) | Nome do projeto `boleto-dev`, só o compose da raiz, o `up` padrão com `postgres`, `valkey`, `mailpit`, `flyway` e `backend` (sem profile) e o `docs` no profile `docs`, o `flyway` roda uma vez e espera o banco saudável, o `backend` espera o banco saudável e o `flyway` concluído, publica só em `127.0.0.1`, espera o Valkey e o Mailpit saudáveis (Tasks 9 e 10), recebe as variáveis de e-mail e as chaves de CPF de desenvolvimento (constantes públicas que começam com `DEV-ONLY-`, nunca uma chave real nem a efêmera), toda imagem de registro vem de uma âncora do bloco gerado e tem digest, todo serviço de infraestrutura tem healthcheck, toda porta fica em `127.0.0.1`, toda variável tem valor padrão e consta no `.env.example` com o mesmo valor, e a CI nomeia só `postgres valkey mailpit` | Local e CI |
 | `scripts/sync-versions.test.mjs` (`npm test`) | O `sync:check` detecta edição manual no bloco gerado do compose e o `sync` corrige | Local e CI |
 | Job `Compose de desenvolvimento (Linux)` | `docker compose config`, `up -d --wait postgres valkey mailpit` (só a infraestrutura: a CI não tem acesso aos repositórios privados `boleto-backend` e `boleto-migrations`, e o build e a CI do backend são do `boleto-backend`), sondas (`select 1`, `PONG`, `NOAUTH` sem senha, HTTP 200 no Mailpit, portas em `127.0.0.1`), `down` mantém os dados e `down -v` os apaga | CI |
 

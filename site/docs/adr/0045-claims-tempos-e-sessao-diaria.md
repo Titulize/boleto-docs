@@ -15,10 +15,12 @@ O token precisa identificar usuário, tenant e sessão sem carregar dados pessoa
 - Cada refresh emite um novo access de 1 hora, respeitando o limite da sessão.
 - O backend usa um `Clock` injetável (bean em `shared`), para que os testes controlem o horário.
 - **Suposição a confirmar:** o fuso `America/Sao_Paulo` foi escolhido sem confirmação do usuário do produto. Mudar o fuso é só trocar a propriedade.
+
 ## Consequências
 - Roubo de um access token vale no máximo 1 hora, e a sessão inteira no máximo até a meia-noite.
 - Quem trabalha na virada do dia é desconectado e refaz o login.
 - Uma consulta de permissões por requisição custa uma ida ao banco. Se virar gargalo, um cache curto pode entrar depois, em novo ADR.
+- **Nota (2026-11-24), fuso confirmado:** o usuário do produto confirmou que o fuso deve ser o do local de onde a pessoa se loga e que, por ora, a plataforma atua só no Brasil. A decisão não muda: continua `America/Sao_Paulo`, único e configurável (`boleto.seguranca.fuso`). A evolução prevista é usar o fuso do usuário logado, o que exige decidir de onde ele vem (cadastro do usuário, da empresa ou do navegador) e como a meia-noite da sessão se comporta ao mudar de fuso. Isso pede novo ADR quando houver operação fora do Brasil. A pendência está no [registro do Task 9](../progresso/task-09-autenticacao-autorizacao.md).
 ## Alternativas consideradas
 | Alternativa | Por que não |
 |---|---|

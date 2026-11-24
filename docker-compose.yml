@@ -116,6 +116,8 @@ services:
         condition: service_completed_successfully
       valkey:
         condition: service_healthy
+      mailpit:
+        condition: service_healthy
     restart: 'no'
     ports:
       - '127.0.0.1:${BACKEND_PORT:-8080}:8080'
@@ -131,6 +133,18 @@ services:
       # Administrador inicial, só para desenvolvimento (ADR 0049).
       BOLETO_ADMIN_INICIAL_EMAIL: ${BOLETO_ADMIN_INICIAL_EMAIL:-admin@boleto.test}
       BOLETO_ADMIN_INICIAL_SENHA: ${BOLETO_ADMIN_INICIAL_SENHA:-Admin-dev-2026!}
+      # E-mail de convite e de recuperação de senha: o Mailpit captura tudo (ADR 0053).
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: 1025
+      BOLETO_APP_URL_BASE: ${BOLETO_APP_URL_BASE:-http://localhost:4200}
+      BOLETO_EMAIL_REMETENTE: ${BOLETO_EMAIL_REMETENTE:-Plataforma de Boletos <nao-responda@boleto.test>}
+      # CPF cifrado (ADR 0054). Estas duas chaves são CONSTANTES DE DESENVOLVIMENTO, públicas e sem valor:
+      # os bytes são o texto legível "DEV-ONLY-...". Não são segredos. Em produção as chaves vêm do cofre.
+      # A chave efêmera (BOLETO_PII_GERAR_CHAVES_EFEMERAS) não serve aqui: o volume do banco sobrevive ao
+      # restart e o CPF gravado ficaria ilegível.
+      BOLETO_PII_CPF_CHAVES_1: ${BOLETO_PII_CPF_CHAVES_1:-REVWLU9OTFktY2hhdmUtY3BmLW5hby1lLXNlZ3JlZG8=}
+      BOLETO_PII_CPF_VERSAO_ATUAL: '1'
+      BOLETO_PII_CPF_INDICE_CHAVE: ${BOLETO_PII_CPF_INDICE_CHAVE:-REVWLU9OTFktaW5kaWNlLWNwZi1zZW0tc2VncmVkbyE=}
       SPRINGDOC_API_DOCS_ENABLED: 'true'
       SPRINGDOC_SWAGGER_UI_ENABLED: 'true'
     healthcheck:

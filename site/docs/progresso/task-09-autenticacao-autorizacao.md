@@ -7,7 +7,7 @@ title: 'Task 09: Autenticação e autorização'
 
 - **Situação:** Concluída
 - **Início:** 2026-11-23
-- **Última atualização:** 2026-11-23
+- **Última atualização:** 2026-11-24
 - **Repositórios:** `boleto-docs`, `boleto-backend` (o `boleto-migrations` não muda)
 
 ## Objetivo
@@ -131,10 +131,10 @@ O `boleto-backend` só tem o workflow `CI`. Os workflows `CI` e `Documentação`
 Definição de pronto: código, testes e demonstração no repositório (feito); verificações locais e workflows do backend verdes (feito; os do `boleto-docs` constam no tasks.md); documentação e READMEs atualizados (feito); `tasks.md` com o estado real (feito). Nada do que o Task 9 prometia ficou aberto. Itens que seguem para depois, sem bloquear o fechamento:
 
 - **Frontend (Tasks 12 e 13):** ao carregar ou recarregar a página, o Angular chama `POST /auth/refresh` para obter um novo access. Isso exige guardar o refresh entre recarregamentos (sessionStorage ou cookie HttpOnly), escolha do frontend que reabre a evolução para cookie ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md)).
-- **Fuso da sessão diária:** `America/Sao_Paulo` é suposição a confirmar com o usuário ([ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md)).
+- **Fuso da sessão diária (confirmado em 2026-11-24, evolução pendente):** o usuário confirmou `America/Sao_Paulo`: por ora a plataforma atua só no Brasil, e o fuso deve ser, no futuro, o do local de onde a pessoa se loga. A decisão do [ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md) não muda. **Pendência aberta:** usar o fuso do usuário logado. Falta decidir de onde ele vem (cadastro do usuário, da empresa ou do navegador) e como a meia-noite da sessão se comporta ao mudar de fuso. Pede novo ADR quando houver operação fora do Brasil. Acompanhada no [registro do Task 10](./task-10-convite-e-recuperacao-de-senha.md).
 - **Teste de `store_data_at_delete` nas exclusões de `Usuario` e `EmpresaGestora`:** só a exclusão de `usuario_perfil` tem teste (`AuditoriaPerfilIT`). Ainda não existe código que exclua essas entidades, e a RLS recusaria a revisão `DEL` com `tenant_id` nulo, então o teste entra junto com a primeira exclusão.
 - **Produção:** preencher `BOLETO_JWT_CHAVE_PRIVADA` pelo Secrets Manager (fora do escopo da Fase 1).
-- Convite e "esqueci minha senha" ficam no Task 10.
+- Convite e "esqueci minha senha" ficam no Task 10 (feitos lá, ver o [registro do Task 10](./task-10-convite-e-recuperacao-de-senha.md)).
 Pendências do Task 8 resolvidas aqui: o `ContextoTenant` é ligado pelo JWT validado; o contexto é propagado no executor `executorComContexto`; o `X-Tenant-Id` é ignorado em controller real (`TenantDoJwtIT` com `/auth/me`); `perfil*` e `usuario_perfil` são auditados; a exclusão (`DEL`) ganhou teste (`AuditoriaPerfilIT`). Seguem abertos os testes de `REQUIRES_NEW`, `readOnly` e concorrência com `@Version`.
 
 ## Histórico
@@ -145,4 +145,5 @@ Pendências do Task 8 resolvidas aqui: o `ContextoTenant` é ligado pelo JWT val
 | 2026-11-23 | Autenticação, sessão, refresh, limites e testes no `boleto-backend` |
 | 2026-11-23 | Correções da revisão: permissão reconferida no token de empresa assumida (`caadd34`), ADRs 0012 e 0046 (`6632d67`) e este registro |
 | 2026-11-23 | Backend integrado (PR #8, `00da90b`), demonstração ao vivo no Compose, workflows registrados e Task 9 concluída |
+| 2026-11-24 | Fuso `America/Sao_Paulo` confirmado pelo usuário (só Brasil por ora); evolução para o fuso do usuário logado registrada como pendência |
 | 2026-11-23 | Autorização, assumir empresa, auditoria de perfis, regras ArchUnit, demonstração no Compose e este registro; falta o envio |

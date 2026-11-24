@@ -86,6 +86,20 @@ test('o backend sobe sem profile, em 127.0.0.1, depois do banco saudável e da m
   assert.match(backend.text, /^ {6}BOLETO_JWT_GERAR_CHAVE_EFEMERA:\s*'true'\s*$/m, 'chave efêmera só no dev (ADR 0044)');
   assert.match(backend.text, /^ {6}BOLETO_ADMIN_INICIAL_EMAIL:/m);
   assert.match(backend.text, /^ {6}BOLETO_ADMIN_INICIAL_SENHA:/m);
+  assert.match(backend.text, /^ {6}mailpit:\s*\n {8}condition:\s*service_healthy\s*$/m, 'o backend espera o mailpit (ADR 0053)');
+  assert.match(backend.text, /^ {6}SPRING_MAIL_HOST:\s*mailpit\s*$/m);
+  assert.match(backend.text, /^ {6}SPRING_MAIL_PORT:\s*1025\s*$/m);
+  assert.match(backend.text, /^ {6}BOLETO_APP_URL_BASE:/m);
+  assert.match(backend.text, /^ {6}BOLETO_PII_CPF_VERSAO_ATUAL:\s*'1'\s*$/m);
+  assert.doesNotMatch(backend.text, /BOLETO_PII_GERAR_CHAVES_EFEMERAS/, 'a chave efêmera não serve no Compose: o CPF ficaria ilegível no restart (ADR 0054)');
+  // As chaves de CPF do Compose são constantes públicas de dev: os bytes decodificados começam com DEV-ONLY-.
+  for (const nome of ['BOLETO_PII_CPF_CHAVES_1', 'BOLETO_PII_CPF_INDICE_CHAVE']) {
+    const m = backend.text.match(new RegExp(String.raw`^ {6}${nome}:\s*\$\{${nome}:-([A-Za-z0-9+/=]+)\}\s*$`, 'm'));
+    assert.ok(m, nome + ' sem valor padrão de dev');
+    const bytes = Buffer.from(m[1], 'base64');
+    assert.equal(bytes.length, 32, nome + ' precisa ter 32 bytes');
+    assert.ok(bytes.toString('utf8').startsWith('DEV-ONLY-'), nome + ' deve ser a constante pública de dev, nunca uma chave real');
+  }
   assert.match(backend.text, /^ {4}healthcheck:/m);
   // Imagem construída localmente (build), por isso sem âncora do bloco gerado.
   assert.match(backend.text, /^ {4}image:\s*boleto-backend:dev\s*$/m);
