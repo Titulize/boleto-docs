@@ -34,11 +34,11 @@ flowchart LR
 | Container | Responsabilidade |
 |---|---|
 | `boleto-frontend` | Interface do usuário. O cliente da API é gerado a partir do OpenAPI do backend |
-| `boleto-backend` | Regras de negócio, autenticação, auditoria e API REST. Hoje tem o esqueleto (Task 7) e a base multi-tenant e de auditoria (Task 8), sem endpoint de negócio: Spring Boot 4.1.3 sobre Amazon Corretto 25 headless, usuário `10001`, conecta no PostgreSQL como `boleto_app`, isola por tenant (`@TenantId` e RLS), audita com Envers, responde erros em Problem Details, escreve logs JSON e expõe `/actuator/health` e, no dev, o Swagger ([ADR 0032](../adr/0032-esqueleto-do-backend.md), [ADR 0037](../adr/0037-contexto-de-tenant-por-transacao.md)). No Task 9 passa a usar o Valkey (refresh, blacklist e limites) e a autenticar com JWT ([Autenticação](./autenticacao.md)) |
+| `boleto-backend` | Regras de negócio, autenticação, auditoria e API REST. Hoje tem o esqueleto (Task 7) e a base multi-tenant e de auditoria (Task 8), sem endpoint de negócio: Spring Boot 4.1.3 sobre Amazon Corretto 25 headless, usuário `10001`, conecta no PostgreSQL como `boleto_app`, isola por tenant (`@TenantId` e RLS), audita com Envers, responde erros em Problem Details, escreve logs JSON e expõe `/actuator/health` e, no dev, o Swagger ([ADR 0032](../adr/0032-esqueleto-do-backend.md), [ADR 0037](../adr/0037-contexto-de-tenant-por-transacao.md)). No Task 9 passa a usar o Valkey (refresh, blacklist e limites) e a autenticar com JWT ([Autenticação](./autenticacao.md)). No Task 10 envia e-mail de convite e de recuperação de senha por SMTP ao Mailpit (de forma assíncrona) e cifra o CPF do usuário antes de gravar ([ADR 0053](../adr/0053-email-smtp-link-e-modelos.md) e [ADR 0054](../adr/0054-cpf-criptografado-e-blind-index.md)) |
 | `boleto-migrations` | Todo o schema do banco (tabelas, auditoria do Envers, políticas RLS, roles). Imagem de execução única: Flyway (JAR) sobre Amazon Corretto headless, Amazon Linux 2023 ([ADR 0024](../adr/0024-flyway-jar-corretto.md)) |
 | PostgreSQL | Dados transacionais e trilha de auditoria |
 | Valkey | Refresh tokens, blacklist de logout e contadores de rate limit |
-| Mailpit (só desenvolvimento) | Recebe por SMTP os e-mails enviados pelo backend e os mostra numa interface web |
+| Mailpit (só desenvolvimento) | Recebe por SMTP os e-mails enviados pelo backend (convite e recuperação de senha) e os mostra numa interface web em `http://localhost:8025`. O backend do Compose espera por ele |
 
 ## Ordem de execução
 

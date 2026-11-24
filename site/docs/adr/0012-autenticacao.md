@@ -27,6 +27,7 @@ Os usuários são cadastrados manualmente pelo administrador da empresa gestora.
 - Cognito ou Keycloak podem substituir a solução depois, atrás da mesma interface.
 
 **Nota (2026-11-23):** o Task 9 detalhou esta decisão sem alterá-la: algoritmo e chave no [ADR 0044](./0044-jwt-es256-e-chave.md), claims e tempos no [ADR 0045](./0045-claims-tempos-e-sessao-diaria.md), refresh e blacklist no [ADR 0046](./0046-refresh-e-blacklist-no-valkey.md) e administrador inicial no [ADR 0049](./0049-administrador-inicial.md). O convite por e-mail e o esqueci minha senha continuam pendentes.
+**Nota (2026-11-24):** o Task 10 implementou o convite e o esqueci minha senha, sem alterar a decisão: tokens e fluxos no [ADR 0051](./0051-tokens-de-convite-e-recuperacao-de-senha.md), política de senha no [ADR 0052](./0052-politica-de-senha.md) e e-mail no [ADR 0053](./0053-email-smtp-link-e-modelos.md).
 
 ## Alternativas consideradas
 

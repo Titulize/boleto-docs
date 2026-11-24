@@ -4,7 +4,7 @@ title: Autenticação e autorização
 ---
 # Autenticação e autorização
 
-Como o backend identifica quem chama a API e o que essa pessoa pode fazer. Decisões nos ADRs [0044](../adr/0044-jwt-es256-e-chave.md) a [0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md). Esta página descreve o que o Task 9 implementou; a situação da entrega está no [registro do Task 9](../progresso/task-09-autenticacao-autorizacao.md).
+Como o backend identifica quem chama a API e o que essa pessoa pode fazer. Decisões nos ADRs [0044](../adr/0044-jwt-es256-e-chave.md) a [0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md) (Task 9) e [0051](../adr/0051-tokens-de-convite-e-recuperacao-de-senha.md) a [0053](../adr/0053-email-smtp-link-e-modelos.md) (Task 10). Esta página descreve o que os Tasks 9 e 10 implementaram; a situação das entregas está nos registros do [Task 9](../progresso/task-09-autenticacao-autorizacao.md) e do [Task 10](../progresso/task-10-convite-e-recuperacao-de-senha.md).
 
 ## Endpoints
 
@@ -15,6 +15,10 @@ Como o backend identifica quem chama a API e o que essa pessoa pode fazer. Decis
 | `POST /auth/logout` | access token | Revoga a sessão (`sid`) |
 | `GET /auth/me` | access token | Devolve usuário, tenant efetivo, tenant de origem e permissões |
 | `POST /auth/assumir-empresa` | access token + `PLATAFORMA_EMPRESAS:VISUALIZAR` | Recebe `{empresaId}` e devolve um access token para essa empresa |
+| `POST /auth/definir-senha` | pública | Recebe `{token, senha}` e responde 204. Aceita o convite (`CONVIDADO` vira `ATIVO`) ou conclui a recuperação de senha. O token define qual dos dois |
+| `POST /auth/esqueci-senha` | pública | Recebe `{email}` e responde sempre 202 com `{"mensagem":"Se o e-mail estiver cadastrado, enviaremos as instruções."}` |
+| `POST /usuarios` | access token + `USUARIOS:INCLUIR` | Recebe `{nome, email, cpf?, perfilIds?}`, cria o usuário `CONVIDADO` e envia o convite. 201 |
+| `POST /usuarios/{id}/convite` | access token + `USUARIOS:ALTERAR` | Reenvia o convite de um usuário `CONVIDADO` (senão 409). 204 |
 
 Também são públicos `/actuator/health`, `/actuator/info` e, só com o springdoc ligado, o Swagger e `/v3/api-docs`. Todo o resto exige token.
 
@@ -40,7 +44,9 @@ As permissões não vão no token. A cada requisição o backend lê `usuario_pe
 |---|---|
 | Access | 1 hora, ou até `sessaoExpiraEm` se vier antes |
 | Refresh | 8 horas, ou até `sessaoExpiraEm` se vier antes |
-| Sessão | Até a próxima 00:00 do fuso `America/Sao_Paulo` (suposição a confirmar). O refresh não a estende |
+| Sessão | Até a próxima 00:00 do fuso `America/Sao_Paulo`. O refresh não a estende. O fuso do Brasil está confirmado pelo usuário do produto; a evolução prevista é usar o fuso de quem se loga ([ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md)) |
+| Token de convite | 72 horas, uso único |
+| Token de recuperação | 30 minutos, uso único |
 
 ## Fluxos
 
@@ -71,6 +77,52 @@ Login com e-mail inexistente, senha errada, usuário inativo ou bloqueado devolv
 2. Se o refresh já foi usado, o mesmo script grava `sessao-revogada:{sid}` e devolve o `sid`: a sessão inteira cai e a resposta é 401 `REFRESH_REUTILIZADO`. De dois refreshs simultâneos com o mesmo token, só um passa.
 3. Depois da meia-noite da sessão, o refresh falha e a pessoa faz login.
 
+### Convite e definição de senha
+
+```mermaid
+sequenceDiagram
+  participant Adm as Administrador
+  participant A as Backend
+  participant P as PostgreSQL
+  participant M as Mailpit (SMTP)
+  participant U as Convidado
+  Adm->>A: POST /usuarios (Bearer, USUARIOS:INCLUIR)
+  A->>P: grava usuario CONVIDADO (sem senha) e SHA-256 do token
+  A-->>Adm: 201 (situacao CONVIDADO, cpfMascarado)
+  A--)M: depois do commit, em outra thread: e-mail com o link
+  M-->>U: {url-base}/definir-senha#token=...
+  U->>A: POST /auth/definir-senha {token, senha}
+  A->>P: boleto.resolver_tenant_por_token(hash)
+  A->>P: UPDATE token_usuario ... RETURNING (uso único)
+  A->>P: grava hash Argon2id e situação ATIVO
+  A->>A: revoga as sessões do usuário no Valkey
+  A-->>U: 204
+  U->>A: POST /auth/login
+```
+
+O administrador reenvia o convite por `POST /usuarios/{id}/convite`: o token anterior é apagado e um novo é emitido. A página do link pertence ao frontend (Task 13); até lá o token é copiado do e-mail ([Convite e senha](../guias/convite-e-senha.md)).
+
+### Esqueci minha senha
+
+```mermaid
+sequenceDiagram
+  participant U as Usuário
+  participant A as Backend
+  participant V as Valkey
+  participant P as PostgreSQL
+  participant M as Mailpit (SMTP)
+  U->>A: POST /auth/esqueci-senha {email}
+  A->>V: limite:esqueci:{sha256(email)} (3 em 15 min)
+  A-->>U: 202 com a mensagem fixa (sempre igual)
+  A--)P: em outra thread: tenant do e-mail, usuário ATIVO?
+  A--)M: se ATIVO e dentro do limite: e-mail com o link
+  U->>A: POST /auth/definir-senha {token, senha}
+  A->>V: sessao-revogada:{sid} de todas as sessões do usuário
+  A-->>U: 204
+```
+
+A resposta do `esqueci-senha` é idêntica (status, corpo e cabeçalhos, exceto `X-Trace-Id`) para e-mail existente, inexistente, `BLOQUEADO`, `INATIVO` e `CONVIDADO`. Só usuário `ATIVO` e dentro do limite recebe e-mail. Token inexistente, expirado, já usado ou de usuário em situação errada devolve sempre 400 `TOKEN_SENHA_INVALIDO`. Senha fraca devolve 400 `SENHA_FRACA` e não consome o token ([ADR 0052](../adr/0052-politica-de-senha.md)). Depois de definir a senha, todas as sessões do usuário caem e o contador de falhas de login é zerado. O fluxo não faz login automático.
+
 ### Logout
 
 Grava `sessao-revogada:{sid}` com TTL fixo de 25 horas, maior que qualquer sessão. O access e o refresh dessa sessão deixam de valer. Um usuário que deixa de ser `ATIVO` também perde o acesso na hora: a situação é conferida a cada requisição (401 `TOKEN_INVALIDO`).
@@ -88,6 +140,8 @@ Só a empresa da plataforma pode. O novo access leva `tid` da empresa escolhida 
 | `sessao-revogada:{sid}` | `1` | 25 horas no logout (mais que qualquer sessão); o que resta da sessão no reuso |
 | `limite:ip:{ip}`, `limite:email:{sha256(email)}` | estado dos baldes do Bucket4j | gerido pela biblioteca |
 | `login-falhas:{sha256(email)}` | contador de falhas | 15 minutos, fixo desde a 1ª falha |
+| `sessoes-usuario:{usuarioId}` | conjunto dos `sid` das sessões abertas do usuário (Task 10) | 25 horas |
+| `limite:esqueci:{sha256(email)}` | balde do Bucket4j: 3 pedidos por 15 minutos | gerido pela biblioteca |
 
 Com o Valkey fora do ar, o backend responde 503 `SERVIDOR_INDISPONIVEL`. Ele nunca aceita um token sem consultar `sessao-revogada` ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md)).
 
@@ -101,7 +155,7 @@ Cada método de controller fora do módulo `auth` leva `@RequerPermissao(tela = 
 
 ## Erros
 
-Os sete códigos novos estão em [Erros da API](./erros-da-api.md): `NAO_AUTENTICADO`, `CREDENCIAIS_INVALIDAS`, `TOKEN_INVALIDO`, `REFRESH_REUTILIZADO`, `SEM_PERMISSAO`, `LIMITE_EXCEDIDO` e `SERVIDOR_INDISPONIVEL`.
+Os códigos de autenticação e permissão estão em [Erros da API](./erros-da-api.md): `NAO_AUTENTICADO`, `CREDENCIAIS_INVALIDAS`, `TOKEN_INVALIDO`, `REFRESH_REUTILIZADO`, `SEM_PERMISSAO`, `LIMITE_EXCEDIDO` e `SERVIDOR_INDISPONIVEL` (Task 9), mais `TOKEN_SENHA_INVALIDO` e `SENHA_FRACA` (Task 10).
 
 ## Configuração
 
@@ -110,7 +164,12 @@ Os sete códigos novos estão em [Erros da API](./erros-da-api.md): `NAO_AUTENTI
 | `BOLETO_JWT_CHAVE_PRIVADA` | Chave privada ES256 (PEM PKCS#8 em base64, uma linha). Obrigatória fora do dev |
 | `BOLETO_JWT_GERAR_CHAVE_EFEMERA` | `true` gera uma chave a cada início. Só dev. O Compose liga |
 | `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_PASSWORD` | Conexão com o Valkey |
-| `BOLETO_ADMIN_INICIAL_EMAIL`, `BOLETO_ADMIN_INICIAL_SENHA` | Administrador inicial ([ADR 0049](../adr/0049-administrador-inicial.md)). Senha com 12 caracteres ou mais |
+| `BOLETO_ADMIN_INICIAL_EMAIL`, `BOLETO_ADMIN_INICIAL_SENHA` | Administrador inicial ([ADR 0049](../adr/0049-administrador-inicial.md)). A senha segue a [política de senha](../adr/0052-politica-de-senha.md): 12 a 128 caracteres e fora da lista de senhas comuns |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | SMTP dos e-mails de convite e recuperação. Padrão `localhost:1025` sem autenticação. O Compose aponta para o Mailpit |
+| `BOLETO_APP_URL_BASE` | Base dos links dos e-mails, sem barra final. Padrão `http://localhost:4200`. Fora de `localhost` exige `https` |
+| `BOLETO_EMAIL_REMETENTE` | Remetente dos e-mails. Padrão `Plataforma de Boletos <nao-responda@boleto.test>` |
+| `BOLETO_PII_CPF_CHAVES_1` (e `_2`, `_3`), `BOLETO_PII_CPF_VERSAO_ATUAL`, `BOLETO_PII_CPF_INDICE_CHAVE` | Chaves do CPF cifrado ([Chaves de CPF](../guias/chaves-de-cpf.md)). Sem elas o backend não sobe |
+| `BOLETO_PII_GERAR_CHAVES_EFEMERAS` | `true` gera chaves a cada início. Só testes automatizados, nunca o Compose |
 
 O Compose de desenvolvimento define valores padrão para tudo isso, sem segredo real ([Compose de desenvolvimento](../guias/compose-dev.md)).
 
@@ -128,6 +187,8 @@ O bloqueio dura 15 minutos, e mais de 10 logins do mesmo e-mail em um minuto tam
 
 ## Pendências
 
-- Convite por e-mail e "esqueci minha senha" ([ADR 0012](../adr/0012-autenticacao.md)) não fazem parte do Task 9.
+- A tela do link do e-mail (`/definir-senha` e `/redefinir-senha`) é do frontend (Task 13). Até lá o token é copiado do e-mail.
+- Tokens expirados ou usados continuam em `token_usuario`. A retenção e a limpeza ficam para o Task 15 ([Inventário LGPD](./inventario-lgpd.md)).
+- Falha de envio de e-mail só gera log, sem retry nem métrica. A métrica entra no Task 11 ([ADR 0053](../adr/0053-email-smtp-link-e-modelos.md)).
 - O frontend (Tasks 12 e 13) precisa guardar o refresh entre recarregamentos da página ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md)).
-- O fuso `America/Sao_Paulo` da sessão diária precisa de confirmação ([ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md)).
+- Fuso da sessão diária: o usuário confirmou `America/Sao_Paulo` por ora (só Brasil) e quer que a evolução siga o fuso de quem se loga. A pendência está no [registro do Task 9](../progresso/task-09-autenticacao-autorizacao.md) ([ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md)).

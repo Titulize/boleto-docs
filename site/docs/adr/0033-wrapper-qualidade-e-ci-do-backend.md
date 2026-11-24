@@ -26,6 +26,7 @@ O backend precisa de build reprodutível, formatação e cobertura exigidas, tes
 **Sem Renovate neste repositório.** Ele disputaria com o catálogo gerado.
 ## Consequências
 - O JAR do wrapper é o único binário versionado que a sincronização não gera. A validação oficial na CI cobre o risco.
+- **Nota (2026-11-24), aviso do editor sobre o JAR:** o editor mostrou o aviso "Security Warning! The gradle wrapper ... could be malicious" para o `gradle-wrapper.jar` do `boleto-backend` (sha256 `621008af...cdaf8`). Esse sha256 confere com o checksum oficial do wrapper do Gradle 9.9.2, então o JAR é o oficial e pode ser confiado no editor. Na CI a `gradle/actions/wrapper-validation` (fixada por SHA do commit, tag v6.4.1) roda antes de qualquer `./gradlew`, como o ADR já previa. O README do `boleto-backend` passou a registrar essa ordem. A decisão não mudou.
 - Os testes ficam independentes do schema até o Task 8.
 - Fica para o Task 14: smoke com migração e backend na CI, verificação de dependências do Gradle e publicação da imagem.
 - No Windows, o `gradlew.bat` foi executado localmente. O `./gradlew` foi exercitado só no Docker e na CI (Linux).

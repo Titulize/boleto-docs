@@ -22,7 +22,7 @@ A primeira migração (`V1`) do `boleto-migrations` cria a base de identidade e 
 - **Auditoria:** `revinfo` com revisão customizada (usuário, `tenant_id` efetivo, `tenant_origem_id` quando um admin da plataforma atua em outra empresa, e data e hora em milissegundos). Uma tabela `<tabela>_aud` por entidade auditada, sem restrições nas colunas da entidade, imutável para a aplicação (só `SELECT` e `INSERT`). A tabela de usuário auditada não leva o hash da senha. A sequence da revisão tem incremento 50, como o Hibernate 7 espera. O Task 8 confirma com `ddl-auto=validate`.
 - **Origem e efetivo:** a aplicação define `app.tenant_origem_id` (empresa do admin) e `app.tenant_id` (empresa escolhida). O RLS filtra pelo efetivo. A busca de empresas e o `INSERT` de empresa exigem origem na plataforma. O `revinfo` grava os dois.
 - **Caminho administrativo explícito (exceção ao [ADR 0008](./0008-multitenancy.md)):** a resolução do tenant antes do login (por e-mail ou por token) não tem tenant ativo. Ela passa por funções `SECURITY DEFINER` que devolvem só o `tenant_id` (ver [ADR 0026](./0026-roles-e-rls.md)), sem abrir leitura de outras linhas.
-- **CPF:** a V1 não tem CPF. Ele entra na V2, criptografado em coluna com blind index ([ADR 0015](./0015-lgpd.md)).
+- **CPF:** a V1 não tem CPF. Ele entra numa migração posterior, criptografado em coluna com blind index ([ADR 0015](./0015-lgpd.md)). *Nota (2026-11-24): essa migração acabou sendo a V3, porque a V2 foi usada pelo [ADR 0042](./0042-v2-tenant-da-auditoria-da-empresa.md). Ver o [ADR 0056](./0056-v3-cpf-do-usuario.md).*
 
 ## Consequências
 
