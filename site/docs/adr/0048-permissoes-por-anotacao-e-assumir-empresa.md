@@ -16,6 +16,7 @@ O catálogo de telas e as permissões por perfil existem desde a V1. Falta aplic
 ## Consequências
 - Esquecer a anotação em uma rota nova quebra o build, em vez de abrir a rota.
 - Trocar o perfil de alguém vale na próxima requisição.
+- O token com empresa assumida (`tid` diferente de `tor`) reconfere `PLATAFORMA_EMPRESAS:VISUALIZAR` a cada requisição: quem perde essa permissão recebe 401 na requisição seguinte, sem esperar o `exp`.
 - O token com empresa assumida morre com a sessão e não pode ser renovado: para continuar, a pessoa assume a empresa de novo com o access da origem.
 ## Alternativas consideradas
 | Alternativa | Por que não |

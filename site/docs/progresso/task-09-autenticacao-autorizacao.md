@@ -22,6 +22,7 @@ Tudo em commits locais na branch `feat/task-09-autenticacao` dos dois repositór
 
 - `54e7f6d`: o `backend` do `docker-compose.yml` depende do `valkey` (`service_healthy`) e recebe `SPRING_DATA_REDIS_*`, `BOLETO_JWT_GERAR_CHAVE_EFEMERA=true` e `BOLETO_ADMIN_INICIAL_*` com padrões de dev; `.env.example` e `scripts/compose.test.mjs` acompanham.
 - `64c30b1`: ADRs [0044](../adr/0044-jwt-es256-e-chave.md) a [0050](../adr/0050-contexto-de-tenant-jwt-e-threads.md), notas de consequência nos ADRs 0012 e 0013, a página [Autenticação e autorização](../arquitetura/autenticacao.md) e ajustes em `erros-da-api`, `modulos-backend`, `multitenancy-e-auditoria`, `modelo-de-dados`, `containers`, `compose-dev` e `ambiente-do-dev`.
+- `6632d67`: redação do ADR 0012 e tabela de chaves do ADR 0046 corrigidas.
 - Fechamento (este registro): linha no [índice](./index.md), README, `autenticacao.md` e ADR 0046 alinhados com o que foi implementado (formato de `refresh:{hash}`, TTL de `sessao-revogada` no logout), `multitenancy-e-auditoria.md` com a auditoria de perfis, o executor com contexto e a correção do Envers.
 
 `boleto-backend`:
@@ -30,6 +31,7 @@ Tudo em commits locais na branch `feat/task-09-autenticacao` dos dois repositór
 - `d044b89` `test(auth)`: Valkey no `TestcontainersConfiguration`, `RelogioControlado`, `SegurancaDeTesteConfig` e os testes de login, senha, sessão diária, JWT, refresh, logout, bloqueio, limite por IP, IP do cliente, Valkey fora do ar, tenant do JWT, admin inicial, logs e demonstração (`DemoSwaggerIT`).
 - `b7361fe` `test(auth)`: `PermissaoIT`, `PerfilServicoIT`, `AssumirEmpresaIT`, `AuditoriaPerfilIT`, `ContextoTaskDecoratorTest`, `SemCabecalhoDeTenantTest` e três regras novas no `ArquiteturaTest` (`@RequerPermissao` em toda rota fora do `auth`, nenhuma leitura de cabeçalho fora do `auth`, `@Async` só com `executorComContexto`); correção das chaves do Envers no `application.yml`; README.
 - `6dcf1d4` `fix(auth)`: `gerar-chave-efemera` passa a ler `BOLETO_JWT_GERAR_CHAVE_EFEMERA` (sem isso o backend não subia no Compose); README com o jeito de repetir a demonstração.
+- `caadd34` `fix(auth)`: o token de empresa assumida (`tid` diferente de `tor`) reconfere `PLATAFORMA_EMPRESAS:VISUALIZAR` a cada requisição; `AssumirEmpresaIT` ganhou o caso.
 
 `boleto-migrations`: **sem V3.** O bloqueio por tentativas fica no Valkey; `usuario.senha_hash`, as tabelas `perfil_aud`, `perfil_tela_permissao_aud` e `usuario_perfil_aud` e os grants já existem na V1.
 
@@ -42,7 +44,8 @@ Execução local no Windows, Docker Desktop, `MIGRATIONS_CONTEXT` apontando para
 | O quê | Como | Resultado |
 |---|---|---|
 | Baseline do backend antes de mexer | `.\gradlew.bat spotlessCheck check` | passou |
-| Suíte do backend | `.\gradlew.bat spotlessApply spotlessCheck check` em `b7361fe` e `spotlessCheck check` em `6dcf1d4` | 106 testes, 0 falhas; Jacoco 847 de 908 linhas (93%); mínimo 80% |
+| Suíte do backend | `.\gradlew.bat spotlessApply spotlessCheck check` em `b7361fe` e `spotlessCheck check` em `6dcf1d4` | 106 testes, 0 falhas; Jacoco 847 de 908 linhas (93%); mínimo 80% (medido em `6dcf1d4`) |
+| Suíte do backend depois da correção da revisão | `spotlessCheck check` em `caadd34` | 107 testes, 0 falhas, 0 ignorados; Jacoco 854 de 915 linhas (93%) |
 | Imagem do backend | `docker build -t boleto-backend:t09 .` | passou |
 | Versões do backend | `node .platform/sync-versions.mjs check --remote` | versões em dia |
 | Commits | `npx commitlint --from origin/main --to HEAD` nos dois repositórios | passou (um aviso `footer-leading-blank` no `6dcf1d4`, sem erro) |
@@ -98,6 +101,8 @@ Nenhum ainda: não houve push. Ao enviar, acompanhar:
 - **`AssumirEmpresaIT`** esperava `refreshToken: null` no JSON, mas o campo é omitido (`@JsonInclude(NON_NULL)`). O teste passou a conferir a ausência.
 - **Execuções do Gradle sobrepostas** (a ferramenta devolveu o controle antes do fim e uma segunda execução começou) deram `BindException` ao conectar no PostgreSQL do Testcontainers em um teste. A execução seguinte, sozinha, passou.
 - **O backend não subiu no `docker compose up`:** `BOLETO_JWT_GERAR_CHAVE_EFEMERA` não chegava ao Spring, porque o `application.yml` fixava `false` e o nome da variável não segue a ligação relaxada de `boleto.seguranca.jwt.gerar-chave-efemera`. Corrigido no `6dcf1d4` com `${BOLETO_JWT_GERAR_CHAVE_EFEMERA:false}`.
+- **Token de empresa assumida sobrevivia à perda do perfil de plataforma** até o `exp` (achado da revisão): o filtro só conferia a permissão na emissão. Corrigido em `caadd34`: a cada requisição com `tid` diferente de `tor`, o backend reconfere `PLATAFORMA_EMPRESAS:VISUALIZAR` e devolve 401 se faltar.
+- **ADR 0046 contradizia a si mesmo e o ADR 0012 tinha um caractere ESC** (achados da revisão): a tabela de chaves divergia da seção Consequências e o ESC estava no texto. Corrigidos em `6632d67`.
 - **Primeira rodada da demonstração com 429 na 3ª tentativa:** uma rodada anterior, no mesmo minuto, já tinha gasto o limite de 10 logins por minuto do e-mail. Com o Valkey de dev limpo (`FLUSHALL`), a rodada deu 401 cinco vezes e 429 na sexta. O README do backend e a página de autenticação explicam como repetir.
 
 ## Decisões e desvios do plano
@@ -113,6 +118,7 @@ Nenhum ainda: não houve push. Ao enviar, acompanhar:
 - **Enviar e integrar:** push das branches, PRs no `boleto-backend` e no `boleto-docs`, acompanhar todos os workflows e registrar os runs aqui. O Task 9 só fica concluído depois disso.
 - **Frontend (Tasks 12 e 13):** ao carregar ou recarregar a página, o Angular chama `POST /auth/refresh` para obter um novo access. Isso exige guardar o refresh entre recarregamentos (sessionStorage ou cookie HttpOnly), escolha do frontend que reabre a evolução para cookie ([ADR 0046](../adr/0046-refresh-e-blacklist-no-valkey.md)).
 - **Fuso da sessão diária:** `America/Sao_Paulo` é suposição a confirmar com o usuário ([ADR 0045](../adr/0045-claims-tempos-e-sessao-diaria.md)).
+- **Teste de `store_data_at_delete` nas exclusões de `Usuario` e `EmpresaGestora`:** só a exclusão de `usuario_perfil` tem teste (`AuditoriaPerfilIT`). As outras duas dependem da mesma configuração do Envers, mas não têm teste. Pendência de segurança (a RLS recusaria a revisão `DEL` com `tenant_id` nulo).
 - **Produção:** preencher `BOLETO_JWT_CHAVE_PRIVADA` pelo Secrets Manager (fora do escopo da Fase 1).
 - Convite e "esqueci minha senha" ficam no Task 10.
 
@@ -124,4 +130,5 @@ Pendências do Task 8 resolvidas aqui: o `ContextoTenant` é ligado pelo JWT val
 |---|---|
 | 2026-11-23 | ADRs 0044 a 0050, Compose e páginas de arquitetura no `boleto-docs` |
 | 2026-11-23 | Autenticação, sessão, refresh, limites e testes no `boleto-backend` |
+| 2026-11-23 | Correções da revisão: permissão reconferida no token de empresa assumida (`caadd34`), ADRs 0012 e 0046 (`6632d67`) e este registro |
 | 2026-11-23 | Autorização, assumir empresa, auditoria de perfis, regras ArchUnit, demonstração no Compose e este registro; falta o envio |

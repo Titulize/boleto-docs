@@ -77,7 +77,7 @@ Grava `sessao-revogada:{sid}` com TTL fixo de 25 horas, maior que qualquer sess�
 
 ### Assumir empresa
 
-Só a empresa da plataforma pode. O novo access leva `tid` da empresa escolhida e `tor` da plataforma, com o mesmo `sid` e o mesmo `exp`. Não há refresh para esse token. A auditoria grava o tenant de origem ([Multi-tenancy e auditoria](./multitenancy-e-auditoria.md)).
+Só a empresa da plataforma pode. O novo access leva `tid` da empresa escolhida e `tor` da plataforma, com o mesmo `sid` e o mesmo `exp`. Não há refresh para esse token. A cada requisição, o backend reconfere `PLATAFORMA_EMPRESAS:VISUALIZAR` do usuário de origem; se faltar, devolve 401. A auditoria grava o tenant de origem ([Multi-tenancy e auditoria](./multitenancy-e-auditoria.md)).
 
 ## Chaves do Valkey
 
